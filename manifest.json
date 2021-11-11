@@ -1,0 +1,9 @@
+{
+  "domain": "schedule_state",
+  "name": "Schedule State",
+  "documentation": "https://github.com/aneeshd/schedule_state",
+  "codeowners": [],
+  "requirements": ["portion"],
+  "iot_class": "calculated",
+  "version": "0.9.0"
+}
