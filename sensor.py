@@ -45,9 +45,9 @@ _CONDITION_SCHEMA = vol.All(cv.ensure_list, [cv.CONDITION_SCHEMA])
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {
-        vol.Required(CONF_EVENTS): [
+        vol.Optional(CONF_EVENTS): [
             {
-                vol.Required(CONF_START): cv.time,
+                vol.Required(CONF_START, default=time.min): cv.time,
                 vol.Optional(CONF_END, default=time.max): cv.time,
                 vol.Required(CONF_STATE, default=DEFAULT_STATE): cv.string,
                 vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
@@ -57,7 +57,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         ],
         vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
         vol.Optional(CONF_DEFAULT_STATE, default=DEFAULT_STATE): cv.string,
-        vol.Optional(CONF_REFRESH, default=timedelta(days=1)): cv.time_period_str,
+        vol.Optional(CONF_REFRESH, default="24:00:00"): cv.time_period_str,
     }
 )
 
