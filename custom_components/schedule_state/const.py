@@ -1,0 +1,1 @@
+DOMAIN = "schedule_state"

@@ -1,33 +1,32 @@
 """
 A sensor that returns a string based on a defined schedule.
 """
-from datetime import timedelta, time
+from datetime import time, timedelta
 import logging
 from pprint import pformat
-import portion as P
-
-import voluptuous as vol
 
 from homeassistant.components.sensor import PLATFORM_SCHEMA, SensorEntity
-from homeassistant.const import (
-    CONF_NAME,
-    CONF_STATE,
-    CONF_CONDITION,
-)
-import homeassistant.helpers.config_validation as cv
-from homeassistant.helpers.reload import async_setup_reload_service
-from homeassistant.helpers import condition
-from homeassistant.util import dt
+from homeassistant.const import CONF_CONDITION, CONF_NAME, CONF_STATE
+from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import (
     ConditionError,
     ConditionErrorContainer,
     ConditionErrorIndex,
     HomeAssistantError,
 )
+from homeassistant.helpers import condition
+import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.reload import async_setup_reload_service
+from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
+from homeassistant.util import dt
+import portion as P
+import voluptuous as vol
+
+from .const import *
 
 _LOGGER = logging.getLogger(__name__)
 
-DOMAIN = "schedule_state"
 PLATFORMS = ["sensor"]
 
 DEFAULT_NAME = "Schedule State Sensor"
@@ -61,16 +60,11 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     }
 )
 
-# from homeassistant.core import HomeAssistant
-# from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
-# from homeassistant.helpers.entity_platform import AddEntitiesCallback
-
-
 async def async_setup_platform(
-    hass,  #: HomeAssistant,
-    config,  #: ConfigType,
-    async_add_entities,  #: AddEntitiesCallback,
-    discovery_info,  #: DiscoveryInfoType | None = None,
+    hass : HomeAssistant,
+    config : ConfigType,
+    async_add_entities : AddEntitiesCallback,
+    discovery_info : DiscoveryInfoType | None = None,
 ) -> None:
     """Set up the Schedule Sensor."""
 
