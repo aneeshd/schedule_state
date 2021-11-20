@@ -56,7 +56,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         ],
         vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
         vol.Optional(CONF_DEFAULT_STATE, default=DEFAULT_STATE): cv.string,
-        vol.Optional(CONF_REFRESH, default="24:00:00"): cv.time_period_str,
+        vol.Optional(CONF_REFRESH, default="6:00:00"): cv.time_period_str,
     }
 )
 
