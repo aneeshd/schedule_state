@@ -1,0 +1,79 @@
+default_config:
+
+logger:
+  default: info
+  logs:
+    custom_components.schedule_state: debug
+
+# If you need to debug uncomment the line below (doc: https://www.home-assistant.io/integrations/debugpy/)
+# debugpy:
+
+sensor:
+  - platform: schedule_state
+    name: Thermostat State
+    refresh: "24:00:00"
+    events:
+      - start: "0:00"
+        end: "5:30"
+        state: sleep
+      - start: "5:30"
+        end: "6:30"
+        state: toasty
+      - start: "6:30"
+        end: "15:30"
+        state: normal
+      - start: "15:30"
+        end: "17:30"
+        state: energy-saving
+      - start: "17:30"
+        end: "20:00"
+        state: toasty
+      - start: "20:00"
+        end: "22:30"
+        state: normal
+      - start: "22:30"
+        state: sleep
+
+      # Tuesday morning
+      - start: "4:45"
+        end: "6:30"
+        state: toasty
+        condition:
+          condition: time
+          weekday:
+            - tue
+
+      # Wednesday morning
+      - start: "5:15"
+        end: "6:30"
+        state: toasty
+        condition:
+          condition: time
+          weekday:
+            - wed
+
+      # Friday afternoon
+      - start: "15:30"
+        end: "17:30"
+        state: normal
+        condition:
+          condition: time
+          weekday:
+            - fri
+
+      # weekends
+      - start: "0:00"
+        end: "8:00"
+        state: sleep
+        condition: &weekend
+          condition: time
+          weekday:
+            - sat
+            - sun
+      - start: "8:00"
+        end: "10:00"
+        state: toasty
+        condition: *weekend
+      - start: "10:00"
+        state: normal
+        condition: *weekend
