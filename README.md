@@ -3,7 +3,7 @@
 ## Installation
 
 [![GitHub Release][releases-shield]][releases]
-![GitHub Issues][issues-shield]
+[![GitHub Issues][issues-shield]][issues]
 
 [![License][license-shield]](LICENSE)
 
@@ -29,3 +29,4 @@
 [maintenance-shield]: https://img.shields.io/badge/maintainer-aneeshd-blue.svg?style=for-the-badge
 [releases-shield]: https://img.shields.io/github/release/custom-components/blueprint.svg?style=for-the-badge
 [releases]: https://github.com/aneeshd/schedule_state/releases
+[issues]: https://github.com/aneeshd/schedule_state/issues
