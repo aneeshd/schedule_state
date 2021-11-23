@@ -13,8 +13,7 @@ sensor:
     name: Thermostat State
     refresh: "24:00:00"
     events:
-      - start: "0:00"
-        end: "5:30"
+      - end: "5:30"
         state: sleep
       - start: "5:30"
         end: "6:30"

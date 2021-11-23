@@ -46,7 +46,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {
         vol.Optional(CONF_EVENTS): [
             {
-                vol.Required(CONF_START, default=time.min): cv.time,
+                vol.Optional(CONF_START, default=time.min): cv.time,
                 vol.Optional(CONF_END, default=time.max): cv.time,
                 vol.Required(CONF_STATE, default=DEFAULT_STATE): cv.string,
                 vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
