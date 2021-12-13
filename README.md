@@ -107,6 +107,25 @@ weekends or [holidays](https://www.home-assistant.io/integrations/workday/).
             - sun
 ```
 
+## Templates
+
+Start and/or end times can be specified using [templates](https://www.home-assistant.io/docs/configuration/templating/).
+
+Use the attributes `start_template`/`end_template` instead of `start`/`end`.
+
+This is an example of a sensor that provides `day` or `night` states based on data from
+the [sun integration](https://www.home-assistant.io/integrations/sun/).
+
+```
+    events:
+      - state: night
+      - start_template: "{{ states.sun.sun.attributes.next_rising }}"
+        end_template: "{{ states.sun.sun.attributes.next_setting }}"
+        state: day
+```
+
+Template values are refreshed at every `refresh` interval.
+
 ## Contributions are welcome!
 
 If you want to contribute to this please read the [Contribution guidelines](CONTRIBUTING.md)

@@ -1,7 +1,7 @@
 """
 A sensor that returns a string based on a defined schedule.
 """
-from datetime import time, timedelta
+from datetime import time, timedelta, datetime
 import logging
 from pprint import pformat
 
@@ -36,7 +36,9 @@ SCAN_INTERVAL = timedelta(seconds=60)
 
 CONF_EVENTS = "events"
 CONF_START = "start"
+CONF_START_TEMPLATE = "start_template"
 CONF_END = "end"
+CONF_END_TEMPLATE = "end_template"
 CONF_DEFAULT_STATE = "default_state"
 CONF_REFRESH = "refresh"
 
@@ -46,10 +48,11 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {
         vol.Optional(CONF_EVENTS): [
             {
-                vol.Optional(CONF_START, default=time.min): cv.time,
-                vol.Optional(CONF_END, default=time.max): cv.time,
+                vol.Optional(CONF_START): cv.time,
+                vol.Optional(CONF_START_TEMPLATE): cv.template,
+                vol.Optional(CONF_END): cv.time,
+                vol.Optional(CONF_END_TEMPLATE): cv.template,
                 vol.Required(CONF_STATE, default=DEFAULT_STATE): cv.string,
-                vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
                 vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
                 vol.Optional(CONF_CONDITION): _CONDITION_SCHEMA,
             }
@@ -127,7 +130,37 @@ class ScheduleSensorData:
         self.refresh = refresh
         self.states = {}
         self.refresh_time = None
-        # pprint(events)
+
+    def evaluate_template(self, event, prefix, default):
+        s = event.get(prefix, None)
+        st = event.get(prefix + "_template", None)
+
+        if s is None and st is None:
+            _LOGGER.debug(f"... no {prefix} provided, using default")
+            ret = default
+
+        elif s is not None:
+            if st is not None:
+                _LOGGER.debug(
+                    f"... ignoring {prefix}_template since {prefix} was provided"
+                )
+            ret = s
+
+        else:
+            st.hass = self.hass
+            temp = st.async_render_with_possible_json_value(st, time.min)
+            _LOGGER.debug(f"... {prefix}_template text: {temp}")
+            ret = dt.as_local(datetime.fromisoformat(temp)).time()
+            _LOGGER.debug(f"...... isoformat/time: {ret}")
+
+        _LOGGER.debug(f"... >> {prefix} time: {ret}")
+        return ret
+
+    async def get_start(self, event):
+        return self.evaluate_template(event, "start", time.min)
+
+    async def get_end(self, event):
+        return self.evaluate_template(event, "end", time.max)
 
     async def process_events(self):
         """Process the list of events and derive the schedule for the day."""
@@ -135,12 +168,12 @@ class ScheduleSensorData:
         states = {}
 
         for event in events:
+            _LOGGER.debug(f"processing event {event}")
             state = event.get("state", "default")
             cond = event.get("condition", None)
 
             variables = {}
             if cond is not None:
-                # print(f"{state}: {cond}")
                 cond_func = await _async_process_if(self.hass, event.get("name"), cond)
                 if not cond_func(variables):
                     _LOGGER.info(
@@ -148,7 +181,9 @@ class ScheduleSensorData:
                     )
                     continue
 
-            i = P.open(event.get("start"), event.get("end", time.max))
+            start = await self.get_start(event)
+            end = await self.get_end(event)
+            i = P.open(start, end)
             for xstate in states:
                 if xstate == state:
                     continue

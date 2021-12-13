@@ -1,5 +1,7 @@
 {
-  "codeowners": ["@aneeshd"],
+  "codeowners": [
+    "@aneeshd"
+  ],
   "config_flow": false,
   "dependencies": [],
   "documentation": "https://github.com/aneeshd/schedule_state",
@@ -7,6 +9,8 @@
   "iot_class": "calculated",
   "issue_tracker": "https://github.com/aneeshd/schedule_state/issues",
   "name": "Schedule State",
-  "requirements": ["portion"],
-  "version": "0.9.0"
+  "requirements": [
+    "portion"
+  ],
+  "version": "0.10.0"
 }

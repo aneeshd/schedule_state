@@ -8,6 +8,8 @@ logger:
 # If you need to debug uncomment the line below (doc: https://www.home-assistant.io/integrations/debugpy/)
 # debugpy:
 
+sun:
+
 sensor:
   - platform: schedule_state
     name: Thermostat State
@@ -76,3 +78,12 @@ sensor:
       - start: "10:00"
         state: normal
         condition: *weekend
+
+  - platform: schedule_state
+    name: Sun tracker
+    refresh: "1:00:00"
+    events:
+      - state: night
+      - start_template: "{{ states.sun.sun.attributes.next_rising }}"
+        end_template: "{{ states.sun.sun.attributes.next_setting }}"
+        state: day
