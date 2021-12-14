@@ -131,37 +131,6 @@ class ScheduleSensorData:
         self.states = {}
         self.refresh_time = None
 
-    def evaluate_template(self, event, prefix, default):
-        s = event.get(prefix, None)
-        st = event.get(prefix + "_template", None)
-
-        if s is None and st is None:
-            _LOGGER.debug(f"... no {prefix} provided, using default")
-            ret = default
-
-        elif s is not None:
-            if st is not None:
-                _LOGGER.debug(
-                    f"... ignoring {prefix}_template since {prefix} was provided"
-                )
-            ret = s
-
-        else:
-            st.hass = self.hass
-            temp = st.async_render_with_possible_json_value(st, time.min)
-            _LOGGER.debug(f"... {prefix}_template text: {temp}")
-            ret = dt.as_local(datetime.fromisoformat(temp)).time()
-            _LOGGER.debug(f"...... isoformat/time: {ret}")
-
-        _LOGGER.debug(f"... >> {prefix} time: {ret}")
-        return ret
-
-    async def get_start(self, event):
-        return self.evaluate_template(event, "start", time.min)
-
-    async def get_end(self, event):
-        return self.evaluate_template(event, "end", time.max)
-
     async def process_events(self):
         """Process the list of events and derive the schedule for the day."""
         events = self.events
@@ -201,6 +170,82 @@ class ScheduleSensorData:
         _LOGGER.info(pformat(states))
         self.states = states
         self.refresh_time = dt.as_local(dt.now())
+
+    async def get_start(self, event):
+        return self.evaluate_template(event, "start", time.min)
+
+    async def get_end(self, event):
+        return self.evaluate_template(event, "end", time.max)
+
+    def evaluate_template(self, event, prefix, default):
+        s = event.get(prefix, None)
+        st = event.get(prefix + "_template", None)
+
+        if s is None and st is None:
+            _LOGGER.debug(f"... no {prefix} provided, using default")
+            ret = default
+
+        elif s is not None:
+            if st is not None:
+                _LOGGER.debug(
+                    f"... ignoring {prefix}_template since {prefix} was provided"
+                )
+            ret = s
+
+        else:
+            st.hass = self.hass
+            temp = st.async_render_with_possible_json_value(st, time.min)
+            _LOGGER.debug(f"... {prefix}_template text: {temp}")
+            ret = self.guess_value(temp)
+
+        if ret is None:
+            ret = default
+
+        _LOGGER.debug(f"... >> {prefix} time: {ret}")
+        return ret
+
+    def guess_value(self, text):
+        try:
+            date = dt.parse_datetime(text)
+            if date is not None:
+                _LOGGER.debug(f"...... found datetime: {date}")
+                tme = dt.as_local(date).time()
+                return tme
+        except ValueError:
+            pass
+
+        try:
+            date = datetime.fromisoformat(text)
+            _LOGGER.debug(f"...... found isoformat date: {date}")
+            tme = dt.as_local(date).time()
+            return tme
+        except ValueError:
+            pass
+
+        try:
+            tme = dt.parse_time(text)
+            if tme is not None:
+                _LOGGER.debug(f"...... found time: {tme}")
+                return dt.as_local(tme)
+        except ValueError:
+            pass
+
+        try:
+            tme = time.fromisoformat(text)
+            _LOGGER.debug(f"...... found isoformat time: {tme}")
+            return dt.as_local(tme)
+        except ValueError:
+            pass
+
+        try:
+            date = dt.utc_from_timestamp(int(float(text)))
+            _LOGGER.debug(f"...... found timestamp: {date}")
+            tme = dt.as_local(date).time()
+            return tme
+        except:
+            pass
+
+        return None
 
     async def update(self):
         """Get the latest state based on the event schedule."""

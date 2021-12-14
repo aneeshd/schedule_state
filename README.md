@@ -55,6 +55,8 @@ Create a `schedule_state` sensor:
 By default, the sensor returns the name provided as the `default_state`. Configuration is built up in layers of events.
 Events have a `start` time and `end` time, and cause the sensor to report a new `state` name.
 
+All times are interpreted as belonging to the local timezone.
+
 This simple configuration will cause the sensor to report `sleep` or `awake` depending on the time of day.
 You can create automations that trigger on the sensor state. Or, you can use the value of the sensor state as a
 condition in your automations.
@@ -112,6 +114,16 @@ weekends or [holidays](https://www.home-assistant.io/integrations/workday/).
 Start and/or end times can be specified using [templates](https://www.home-assistant.io/docs/configuration/templating/).
 
 Use the attributes `start_template`/`end_template` instead of `start`/`end`.
+
+The template value must evaluate to one of these data types:
+
+| Format    | Comments                     |
+|-----------|------------------------------|
+| datetime  | A string that HA or Python can understand as a `datetime`. Only the time portion is used. |
+| time      | A string that HA or Python can understand as a `time`. |
+| timestamp | A number that will be interpreted as a timestamp. This will be converted to a `datetime` and only the time portion is used. |
+
+All times are converted to the local timezone.
 
 This is an example of a sensor that provides `day` or `night` states based on data from
 the [sun integration](https://www.home-assistant.io/integrations/sun/).

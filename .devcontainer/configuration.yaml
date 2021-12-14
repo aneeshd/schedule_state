@@ -10,9 +10,15 @@ logger:
 
 sun:
 
+binary_sensor:
+  - platform: workday
+    country: CA
+    province: "ON"
+
 sensor:
   - platform: schedule_state
     name: Thermostat State
+    default_state: normal
     refresh: "24:00:00"
     events:
       - end: "5:30"
@@ -83,7 +89,13 @@ sensor:
     name: Sun tracker
     refresh: "1:00:00"
     events:
-      - state: night
-      - start_template: "{{ states.sun.sun.attributes.next_rising }}"
+      - state: night # try this instead of default_state
+      - start_template: "{{ states.sun.sun.attributes.next_dawn }}"
+        end_template: "{{ states.sun.sun.attributes.next_rising }}"
+        state: twilight
+      - start_template: "{{ (states.sun.sun.attributes.next_rising | as_timestamp) - 600 }}" # 10 minutes before sunrise
         end_template: "{{ states.sun.sun.attributes.next_setting }}"
         state: day
+      - start_template: "{{ states.sun.sun.attributes.next_setting }}"
+        end_template: "{{ states.sun.sun.attributes.next_dusk }}"
+        state: twilight
