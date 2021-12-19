@@ -161,5 +161,5 @@ If you want to contribute to this please read the [Contribution guidelines](CONT
 [releases-shield]: https://img.shields.io/github/release/custom-components/blueprint.svg
 [releases]: https://github.com/aneeshd/schedule_state/releases
 [issues]: https://github.com/aneeshd/schedule_state/issues
-[schedule1img]: ./docs/schedule1.png
-[schedule2img]: ./docs/schedule2.png
+[schedule1img]: https://raw.githubusercontent.com/aneeshd/schedule_state/main/docs/schedule1.png
+[schedule2img]: https://raw.githubusercontent.com/aneeshd/schedule_state/main/docs/schedule2.png
