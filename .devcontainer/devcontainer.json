@@ -26,5 +26,9 @@
 		"editor.formatOnSave": true,
 		"editor.formatOnType": true,
 		"files.trimTrailingWhitespace": true
-	}
+	},
+	"mounts": [
+		// Custom configuration directory
+		"source=${localWorkspaceFolder}/.devcontainer/schedules,target=/config/schedules,type=bind",
+	]
 }

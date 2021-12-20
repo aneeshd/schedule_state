@@ -77,7 +77,7 @@ async def async_setup_platform(
     events = config.get(CONF_EVENTS)
     name = config.get(CONF_NAME)
     refresh = config.get(CONF_REFRESH)
-    data = ScheduleSensorData(hass, events, refresh)
+    data = ScheduleSensorData(name, hass, events, refresh)
     await data.process_events()
 
     async_add_entities([ScheduleSensor(hass, data, name)], True)
@@ -122,8 +122,9 @@ class ScheduleSensor(SensorEntity):
 class ScheduleSensorData:
     """The class for handling the state computation."""
 
-    def __init__(self, hass, events, refresh):
+    def __init__(self, name, hass, events, refresh):
         """Initialize the data object."""
+        self.name = name
         self.value = None
         self.hass = hass
         self.events = events
@@ -137,7 +138,7 @@ class ScheduleSensorData:
         states = {}
 
         for event in events:
-            _LOGGER.debug(f"processing event {event}")
+            _LOGGER.debug(f"{self.name}: processing event {event}")
             state = event.get("state", "default")
             cond = event.get("condition", None)
 
@@ -146,28 +147,38 @@ class ScheduleSensorData:
                 cond_func = await _async_process_if(self.hass, event.get("name"), cond)
                 if not cond_func(variables):
                     _LOGGER.info(
-                        f"{state}: condition was not satisfied, skipping {event}"
+                        f"{self.name}: {state}: condition was not satisfied, skipping {event}"
                     )
                     continue
 
             start = await self.get_start(event)
             end = await self.get_end(event)
+            if start > end:
+                _LOGGER.error(
+                    f"{self.name}: {state}: error with event - start:{start} > end:{end}"
+                )
+                continue
+
             i = P.open(start, end)
             for xstate in states:
                 if xstate == state:
                     continue
                 overlap = i & states[xstate]
                 if i.overlaps(states[xstate]):
-                    _LOGGER.info(f"{state} overlaps with existing {xstate}: {overlap}")
+                    _LOGGER.info(
+                        f"{self.name}: {state} overlaps with existing {xstate}: {overlap}"
+                    )
                     states[xstate] -= overlap
-                    _LOGGER.info(f"... reducing {xstate} to {states[xstate]}")
+                    _LOGGER.info(
+                        f"{self.name}: ... reducing {xstate} to {states[xstate]}"
+                    )
 
             if state not in states:
                 states[state] = i
             else:
                 states[state] = states[state] | i
 
-        _LOGGER.info(pformat(states))
+        _LOGGER.info(f"{self.name}: {pformat(states)}")
         self.states = states
         self.refresh_time = dt.as_local(dt.now())
 
@@ -182,33 +193,33 @@ class ScheduleSensorData:
         st = event.get(prefix + "_template", None)
 
         if s is None and st is None:
-            _LOGGER.debug(f"... no {prefix} provided, using default")
+            _LOGGER.debug(f"{self.name}: ... no {prefix} provided, using default")
             ret = default
 
         elif s is not None:
             if st is not None:
                 _LOGGER.debug(
-                    f"... ignoring {prefix}_template since {prefix} was provided"
+                    f"{self.name}: ... ignoring {prefix}_template since {prefix} was provided"
                 )
             ret = s
 
         else:
             st.hass = self.hass
             temp = st.async_render_with_possible_json_value(st, time.min)
-            _LOGGER.debug(f"... {prefix}_template text: {temp}")
+            _LOGGER.debug(f"{self.name}: ... {prefix}_template text: {temp}")
             ret = self.guess_value(temp)
 
         if ret is None:
             ret = default
 
-        _LOGGER.debug(f"... >> {prefix} time: {ret}")
+        _LOGGER.debug(f"{self.name}: ... >> {prefix} time: {ret}")
         return ret
 
     def guess_value(self, text):
         try:
             date = dt.parse_datetime(text)
             if date is not None:
-                _LOGGER.debug(f"...... found datetime: {date}")
+                _LOGGER.debug(f"{self.name}: ...... found datetime: {date}")
                 tme = dt.as_local(date).time()
                 return tme
         except ValueError:
@@ -216,7 +227,7 @@ class ScheduleSensorData:
 
         try:
             date = datetime.fromisoformat(text)
-            _LOGGER.debug(f"...... found isoformat date: {date}")
+            _LOGGER.debug(f"{self.name}: ...... found isoformat date: {date}")
             tme = dt.as_local(date).time()
             return tme
         except ValueError:
@@ -225,21 +236,21 @@ class ScheduleSensorData:
         try:
             tme = dt.parse_time(text)
             if tme is not None:
-                _LOGGER.debug(f"...... found time: {tme}")
+                _LOGGER.debug(f"{self.name}: ...... found time: {tme}")
                 return dt.as_local(tme)
         except ValueError:
             pass
 
         try:
             tme = time.fromisoformat(text)
-            _LOGGER.debug(f"...... found isoformat time: {tme}")
+            _LOGGER.debug(f"{self.name}: ...... found isoformat time: {tme}")
             return dt.as_local(tme)
         except ValueError:
             pass
 
         try:
             date = dt.utc_from_timestamp(int(float(text)))
-            _LOGGER.debug(f"...... found timestamp: {date}")
+            _LOGGER.debug(f"{self.name}: ...... found timestamp: {date}")
             tme = dt.as_local(date).time()
             return tme
         except:
@@ -258,10 +269,10 @@ class ScheduleSensorData:
 
         for state in self.states:
             if nu in self.states[state]:
-                _LOGGER.debug(f"current state is {state} ({nu})")
+                _LOGGER.debug(f"{self.name}: current state is {state} ({nu})")
                 self.value = state
                 return
-        _LOGGER.info(f"current state not found ({nu})")
+        _LOGGER.info(f"{self.name}: current state not found ({nu})")
         self.value = None
 
 
