@@ -146,7 +146,7 @@ class ScheduleSensorData:
             if cond is not None:
                 cond_func = await _async_process_if(self.hass, event.get("name"), cond)
                 if not cond_func(variables):
-                    _LOGGER.info(
+                    _LOGGER.debug(
                         f"{self.name}: {state}: condition was not satisfied, skipping {event}"
                     )
                     continue
@@ -159,17 +159,17 @@ class ScheduleSensorData:
                 )
                 continue
 
-            i = P.open(start, end)
+            i = P.closedopen(start, end)
             for xstate in states:
                 if xstate == state:
                     continue
                 overlap = i & states[xstate]
                 if i.overlaps(states[xstate]):
-                    _LOGGER.info(
+                    _LOGGER.debug(
                         f"{self.name}: {state} overlaps with existing {xstate}: {overlap}"
                     )
                     states[xstate] -= overlap
-                    _LOGGER.info(
+                    _LOGGER.debug(
                         f"{self.name}: ... reducing {xstate} to {states[xstate]}"
                     )
 
@@ -178,7 +178,7 @@ class ScheduleSensorData:
             else:
                 states[state] = states[state] | i
 
-        _LOGGER.info(f"{self.name}: {pformat(states)}")
+        _LOGGER.info(f"{self.name}:\n{pformat(states)}")
         self.states = states
         self.refresh_time = dt.as_local(dt.now())
 
