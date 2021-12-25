@@ -1,3 +1,52 @@
 reload:
   name: Reload
-  description: Reload all schedule_state entities
+  description: Reload all Schedule State entities
+
+recalculate:
+  name: Recalculate
+  description: Recalculate Schedule State entities
+  target:
+    entity:
+      domain: sensor
+
+set_override:
+  name: Set Override
+  description: Add a temporary override of a Schedule State entity
+  target:
+    entity:
+      domain: sensor
+  fields:
+    state:
+      name: State
+      description: State to set
+      required: true
+      selector:
+        text:
+    duration:
+      name: Duration
+      description: Duration for the temporary override
+      required: false
+      selector:
+        number:
+          min: 1
+          max: 360
+          unit_of_measurement: minutes
+    start:
+      name: Start time
+      description: Start time for the temporary override
+      required: false
+      selector:
+        time:
+    end:
+      name: End time
+      description: End time for the temporary override
+      required: false
+      selector:
+        time:
+
+clear_overrides:
+  name: Clear Overrides
+  description: Clear all temporary overrides of a Schedule State entity
+  target:
+    entity:
+      domain: sensor

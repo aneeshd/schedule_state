@@ -138,6 +138,32 @@ the [sun integration](https://www.home-assistant.io/integrations/sun/).
 
 Template values are refreshed at every `refresh` interval.
 
+## Services
+
+### `recalculate`
+
+Forces the schedule to be recalculated. This is useful if you have conditionals or templates in the schedule definition,
+and you would like the schedule to be updated based on these changes.
+
+This is cleaner than re-loading, as it prevents the sensor from becoming "unavailable".
+
+### `set_override`
+
+Temporarily schedule the sensor to report a given value, overriding the schedule definition.
+
+The override can be specified in four different ways:
+
+| Data Provided   | Meaning |
+|-----------------|---------|
+| duration        | Override for `duration` minutes, starting now. |
+| start, duration | Override for `duration` minutes, starting at the next occurrence of `start`. |
+| end, duration   | Override for `duration` minutes, ending at the next occurrence of `end`. |
+| start, end      | Override from the next occurrence to `start` to the next occurrence of `end`. |
+
+### `clear_overrides`
+
+Clears and overrides defined for the schedule.
+
 ## Contributions are welcome!
 
 If you want to contribute to this please read the [Contribution guidelines](CONTRIBUTING.md)
