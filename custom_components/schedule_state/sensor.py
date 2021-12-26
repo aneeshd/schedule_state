@@ -219,6 +219,8 @@ class ScheduleSensor(SensorEntity):
             value = self._default_state
         self._state = value
         self._attributes["states"] = self.data.known_states
+        self._attributes["start"] = self.data.start
+        self._attributes["end"] = self.data.end
 
     async def async_recalculate(self):
         """Recalculate schedule state."""
@@ -252,6 +254,8 @@ class ScheduleSensorData:
         self.refresh_time = None
         self.overrides = []
         self.known_states = set()
+        self.start = None
+        self.end = None
 
     async def process_events(self):
         """Process the list of events and derive the schedule for the day."""
@@ -390,6 +394,8 @@ class ScheduleSensorData:
                 f"{self.name}: override = {o['start']} - {o['end']} == {o['state']} [expires {o['expires']}]"
             )
 
+        self.start = None
+        self.end = None
         time_since_refresh = now - self.refresh_time
         if time_since_refresh.total_seconds() >= self.refresh.total_seconds():
             await self.process_events()
@@ -397,8 +403,13 @@ class ScheduleSensorData:
         for state in self.states:
             if nu in self.states[state]:
                 _LOGGER.debug(f"{self.name}: current state is {state} ({nu})")
+                for i in self.states[state]._intervals:
+                    if nu >= i.lower and nu < i.upper:
+                        self.start = i.lower.isoformat()
+                        self.end = i.upper.isoformat()
                 self.value = state
                 return
+
         _LOGGER.info(f"{self.name}: current state not found ({nu})")
         self.value = None
 
