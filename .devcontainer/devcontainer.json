@@ -28,7 +28,7 @@
 		"files.trimTrailingWhitespace": true
 	},
 	"mounts": [
-		// Custom configuration directory
 		"source=${localWorkspaceFolder}/.devcontainer/schedules,target=/config/schedules,type=bind",
+		"source=${localWorkspaceFolder}/.devcontainer/automations.yaml,target=/config/automations.yaml,type=bind",
 	]
 }
