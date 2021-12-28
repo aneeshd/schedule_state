@@ -131,8 +131,8 @@ the [sun integration](https://www.home-assistant.io/integrations/sun/).
 ```
     events:
       - state: night
-      - start_template: "{{ states.sun.sun.attributes.next_rising }}"
-        end_template: "{{ states.sun.sun.attributes.next_setting }}"
+      - start_template: "{{ as_timestamp(state_attr('sun.sun', 'next_rising')) }}"
+        end_template: "{{ as_timestamp(state_attr('sun.sun', 'next_setting')) }}"
         state: day
 ```
 
