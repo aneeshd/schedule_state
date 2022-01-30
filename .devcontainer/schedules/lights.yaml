@@ -15,6 +15,10 @@
       - state: "off"
         start_template: "{{ (states.sun.sun.attributes.next_rising | as_timestamp) + 1500 }}" # 25 minutes after sunrise
         end_template: "{{ (states.sun.sun.attributes.next_setting | as_timestamp) - 1500 }}" # 25 minutes before sunset
+        condition:
+          condition: state
+          entity_id: input_boolean.vacation_mode
+          state: "on"
 
   - platform: schedule_state
     name: Downstairs Lights State
@@ -26,5 +30,10 @@
         end: "1:00"
         state: maybe-asleep
       - start: "1:00"
-        end: "2:00"
+        end_template: >
+          {% if is_state("input_boolean.manual_mode", "off") %}
+            2:00
+          {% else %}
+            1:30
+          {% endif %}
         state: should-be-asleep

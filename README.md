@@ -109,6 +109,8 @@ weekends or [holidays](https://www.home-assistant.io/integrations/workday/).
             - sun
 ```
 
+Conditions are re-evaluated whenever the state of any entities referenced in the condition change.
+
 ## Templates
 
 Start and/or end times can be specified using [templates](https://www.home-assistant.io/docs/configuration/templating/).
@@ -136,7 +138,7 @@ the [sun integration](https://www.home-assistant.io/integrations/sun/).
         state: day
 ```
 
-Template values are refreshed at every `refresh` interval.
+Template values are refreshed at every `refresh` interval, or whenever the state of any entities referenced in the template change.
 
 ## Services
 

@@ -3,7 +3,7 @@ default_config:
 automation: !include automations.yaml
 
 logger:
-  default: error
+  default: warning
   logs:
     custom_components.schedule_state: debug
 
@@ -20,7 +20,6 @@ binary_sensor:
 sensor:
   - platform: schedule_state
     name: Sun tracker
-    refresh: "1:00:00"
     events:
       - state: night # try this instead of default_state
       - start_template: "{{ states.sun.sun.attributes.next_dawn }}"
@@ -34,3 +33,9 @@ sensor:
         state: twilight
 
 sensor schedules: !include_dir_merge_list schedules/
+
+input_boolean:
+  manual_mode:
+    name: Manual mode
+  vacation_mode:
+    name: Vacation mode
