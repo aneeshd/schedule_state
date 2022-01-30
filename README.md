@@ -30,7 +30,9 @@ and standard Home Assistant tools to handle the *what*.
 Using HACS:
 
 1. Go to the HACS integration page
-2. Add `https://github.com/aneeshd/schedule_state` as a custom repository
+2. Click on "Explore & Download Repositories"
+3. Search for "Schedule State" and add it
+4. Restart Home Assistant
 
 ## Configuration
 
