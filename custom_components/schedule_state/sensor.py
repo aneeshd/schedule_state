@@ -8,7 +8,7 @@ import asyncio
 
 from homeassistant.components.sensor import PLATFORM_SCHEMA, SensorEntity
 from homeassistant.const import CONF_CONDITION, CONF_NAME, CONF_STATE, ATTR_ENTITY_ID
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import (
     ConditionError,
     ConditionErrorContainer,
@@ -21,6 +21,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.reload import async_setup_reload_service
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from homeassistant.util import dt
+from homeassistant.helpers.event import async_track_state_change_event
 import portion as P
 import voluptuous as vol
 
@@ -140,10 +141,10 @@ async def async_setup_platform(
         update_tasks = []
         for target_device in target_devices:
             await target_device.async_set_override(
-                service.data["state"],
-                service.data.get("start", None),
-                service.data.get("end", None),
-                service.data.get("duration", None),
+                service.data[CONF_STATE],
+                service.data.get(CONF_START, None),
+                service.data.get(CONF_END, None),
+                service.data.get(CONF_DURATION, None),
             )
             update_tasks.append(target_device.async_update_ha_state(True))
 
@@ -194,6 +195,22 @@ class ScheduleSensor(SensorEntity):
         self._name = name
         self._state = None
         self._default_state = default_state
+
+        @callback
+        def recalc_callback(*args):
+            _LOGGER.debug(f"{self.data.name}: something changed {args}")
+            self.data.force_refresh = True
+            self.schedule_update_ha_state(force_refresh=True)
+
+        if len(self.data.entities):
+            _LOGGER.info(
+                f"{self.data.name}: installing callback to trigger on changes to {self.data.entities}"
+            )
+            self.async_on_remove(
+                async_track_state_change_event(
+                    self._hass, self.data.entities, recalc_callback
+                )
+            )
 
     @property
     def name(self):
@@ -256,6 +273,8 @@ class ScheduleSensorData:
         self.known_states = set()
         self.start = None
         self.end = None
+        self.entities = set()
+        self.force_refresh = False
 
     async def process_events(self):
         """Process the list of events and derive the schedule for the day."""
@@ -263,13 +282,18 @@ class ScheduleSensorData:
 
         for event in self.events + self.overrides:
             _LOGGER.debug(f"{self.name}: processing event {event}")
-            state = event.get("state", "default")
-            cond = event.get("condition", None)
+            state = event.get(CONF_STATE, DEFAULT_STATE)
+            cond = event.get(CONF_CONDITION, None)
             self.known_states.add(state)
 
             variables = {}
             if cond is not None:
+                _LOGGER.debug(f"{self.name}: condition {cond}")
                 cond_func = await _async_process_if(self.hass, self.name, cond)
+                for conf in cond_func.config:
+                    referenced = condition.async_extract_entities(conf)
+                    _LOGGER.debug(f"... entities used: {referenced}")
+                    self.entities.update(referenced)
                 if not cond_func(variables):
                     _LOGGER.debug(
                         f"{self.name}: {state}: condition was not satisfied, skipping {event}"
@@ -308,14 +332,14 @@ class ScheduleSensorData:
         self.refresh_time = dt.as_local(dt.now())
 
     async def get_start(self, event):
-        return self.evaluate_template(event, "start", time.min)
+        return self.evaluate_template(event, CONF_START, CONF_START_TEMPLATE, time.min)
 
     async def get_end(self, event):
-        return self.evaluate_template(event, "end", time.max)
+        return self.evaluate_template(event, CONF_END, CONF_END_TEMPLATE, time.max)
 
-    def evaluate_template(self, event, prefix, default):
+    def evaluate_template(self, event, prefix, prefixt, default):
         s = event.get(prefix, None)
-        st = event.get(prefix + "_template", None)
+        st = event.get(prefixt, None)
 
         if s is None and st is None:
             _LOGGER.debug(f"{self.name}: ... no {prefix} provided, using default")
@@ -324,14 +348,20 @@ class ScheduleSensorData:
         elif s is not None:
             if st is not None:
                 _LOGGER.debug(
-                    f"{self.name}: ... ignoring {prefix}_template since {prefix} was provided"
+                    f"{self.name}: ... ignoring {prefixt} since {prefix} was provided"
                 )
             ret = s
 
         else:
             st.hass = self.hass
+            # TODO should be able to combine these two
             temp = st.async_render_with_possible_json_value(st, time.min)
-            _LOGGER.debug(f"{self.name}: ... {prefix}_template text: {temp}")
+            info = st.async_render_to_info(None, parse_result=False)
+            _LOGGER.debug(
+                f"{self.name}: ... {prefixt} text: {temp} -- entities used: {info.entities}"
+            )
+            for e in info.entities:
+                self.entities.add(e)
             ret = self.guess_value(temp)
 
         if ret is None:
@@ -347,7 +377,7 @@ class ScheduleSensorData:
                 _LOGGER.debug(f"{self.name}: ...... found datetime: {date}")
                 tme = dt.as_local(date).time()
                 return tme
-        except ValueError:
+        except (ValueError, TypeError):
             pass
 
         try:
@@ -355,22 +385,23 @@ class ScheduleSensorData:
             _LOGGER.debug(f"{self.name}: ...... found isoformat date: {date}")
             tme = dt.as_local(date).time()
             return tme
-        except ValueError:
+        except (ValueError, TypeError):
             pass
 
         try:
             tme = dt.parse_time(text)
             if tme is not None:
                 _LOGGER.debug(f"{self.name}: ...... found time: {tme}")
-                return dt.as_local(tme)
-        except ValueError:
+                return localtime_from_time(tme)
+        except (ValueError, TypeError):
             pass
 
         try:
             tme = time.fromisoformat(text)
-            _LOGGER.debug(f"{self.name}: ...... found isoformat time: {tme}")
-            return dt.as_local(tme)
-        except ValueError:
+            if tme is not None:
+                _LOGGER.debug(f"{self.name}: ...... found isoformat time: {tme}")
+                return localtime_from_time(tme)
+        except (ValueError, TypeError):
             pass
 
         try:
@@ -397,8 +428,12 @@ class ScheduleSensorData:
         self.start = None
         self.end = None
         time_since_refresh = now - self.refresh_time
-        if time_since_refresh.total_seconds() >= self.refresh.total_seconds():
+        if (
+            time_since_refresh.total_seconds() >= self.refresh.total_seconds()
+            or self.force_refresh
+        ):
             await self.process_events()
+            self.force_refresh = False
 
         for state in self.states:
             if nu in self.states[state]:
@@ -492,6 +527,21 @@ def next_time(now: datetime, t: time) -> datetime:
 def start_of_next_day(d: datetime) -> datetime:
     v = d + timedelta(1)
     return datetime(v.year, v.month, v.day)
+
+
+def localtime_from_time(tme: time) -> time:
+    date = dt.now()
+    date = datetime(
+        date.year,
+        date.month,
+        date.day,
+        tme.hour,
+        tme.minute,
+        tme.second,
+        tme.microsecond,
+        date.tzinfo,
+    )
+    return dt.as_local(date).time()
 
 
 async def _async_process_if(hass, name, if_configs):
