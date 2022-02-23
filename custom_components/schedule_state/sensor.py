@@ -29,23 +29,6 @@ from .const import *
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS = ["sensor"]
-
-DEFAULT_NAME = "Schedule State Sensor"
-DEFAULT_STATE = "default"
-
-SCAN_INTERVAL = timedelta(seconds=60)
-
-CONF_EVENTS = "events"
-CONF_START = "start"
-CONF_START_TEMPLATE = "start_template"
-CONF_END = "end"
-CONF_END_TEMPLATE = "end_template"
-CONF_DEFAULT_STATE = "default_state"
-CONF_REFRESH = "refresh"
-CONF_COMMENT = "comment"
-CONF_DURATION = "duration"
-
 _CONDITION_SCHEMA = vol.All(cv.ensure_list, [cv.CONDITION_SCHEMA])
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
@@ -329,7 +312,7 @@ class ScheduleSensorData:
 
         _LOGGER.info(f"{self.name}:\n{pformat(states)}")
         self.states = states
-        self.refresh_time = dt.as_local(dt.now())
+        self.refresh_time = dt.as_local(dt_now())
 
     async def get_start(self, event):
         return self.evaluate_template(event, CONF_START, CONF_START_TEMPLATE, time.min)
@@ -416,7 +399,7 @@ class ScheduleSensorData:
 
     async def update(self):
         """Get the latest state based on the event schedule."""
-        now = dt.as_local(dt.now())
+        now = dt.as_local(dt_now())
         nu = time(now.hour, now.minute)
 
         self.overrides = [o for o in self.overrides if o["expires"] > now]
@@ -449,7 +432,7 @@ class ScheduleSensorData:
         self.value = None
 
     def add_override(self, state, start, end, duration):
-        now = dt.as_local(dt.now())
+        now = dt.as_local(dt_now())
         allow_split = True
 
         if start is None and end is None and duration is None:
@@ -530,7 +513,7 @@ def start_of_next_day(d: datetime) -> datetime:
 
 
 def localtime_from_time(tme: time) -> time:
-    date = dt.now()
+    date = dt_now()
     date = datetime(
         date.year,
         date.month,
@@ -584,3 +567,8 @@ async def _async_process_if(hass, name, if_configs):
     if_action.config = if_configs
 
     return if_action
+
+
+def dt_now():
+    """Return now(). Tests will override the return value."""
+    return dt.now()

@@ -1,0 +1,18 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+pytest = "*"
+pytest-cov = "*"
+pytest-homeassistant-custom-component = "*"
+portion = "==2.2.0"
+PyYAML = "*"
+homeassistant = "*"
+mypy = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.9"
