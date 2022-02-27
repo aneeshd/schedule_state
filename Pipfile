@@ -6,10 +6,13 @@ name = "pypi"
 [packages]
 pytest = "*"
 pytest-cov = "*"
-pytest-homeassistant-custom-component = "*"
 portion = "==2.2.0"
 PyYAML = "*"
-homeassistant = "*"
+# lock homeassistant and pytest-homeassistant-custom-component versions
+homeassistant = "2022.2.8"
+pytest-homeassistant-custom-component = "==0.6.14"
+#homeassistant = "2021.12.5"
+#pytest-homeassistant-custom-component = "==0.5.9"
 mypy = "*"
 holidays = "*"
 

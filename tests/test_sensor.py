@@ -2,20 +2,15 @@
 from datetime import timedelta, datetime, timezone, date
 from unittest.mock import patch
 
-import pytest
 import yaml
-import voluptuous as vol
-import holidays
 
 from typing import Any
-from unittest.mock import patch
 
 from homeassistant import setup
 
 from homeassistant.components.sensor import DOMAIN as SENSOR
 from homeassistant.core import HomeAssistant
-from homeassistant.components import input_boolean, switch
-import homeassistant.components.workday.binary_sensor as binary_sensor
+from homeassistant.components import input_boolean
 
 from custom_components.schedule_state.const import *
 
@@ -187,7 +182,7 @@ async def test_schedule_using_condition(hass: HomeAssistant):
                 "binary_sensor": {
                     "platform": "workday",
                     "country": "CA",
-                    "province": "ON",
+                    # "province": "ON",
                 }
             },
         )
