@@ -10,7 +10,7 @@
   "issue_tracker": "https://github.com/aneeshd/schedule_state/issues",
   "name": "Schedule State",
   "requirements": [
-    "portion"
+    "portion==2.2.0"
   ],
-  "version": "0.12.0"
+  "version": "0.12.1"
 }
