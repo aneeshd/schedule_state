@@ -7,7 +7,6 @@ from pprint import pformat
 import asyncio
 
 from homeassistant.components.sensor import PLATFORM_SCHEMA, SensorEntity
-from homeassistant.const import CONF_CONDITION, CONF_NAME, CONF_STATE, ATTR_ENTITY_ID
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import (
     ConditionError,
@@ -428,7 +427,7 @@ class ScheduleSensorData:
                 self.value = state
                 return
 
-        _LOGGER.info(f"{self.name}: current state not found ({nu})")
+        _LOGGER.debug(f"{self.name}: using default state ({nu})")
         self.value = None
 
     def add_override(self, state, start, end, duration):
