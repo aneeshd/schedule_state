@@ -13,15 +13,15 @@ Github is used to host code, to track issues and feature requests, as well as ac
 
 Pull requests are the best way to propose changes to the codebase.
 
-1. Fork the repo and create your branch from `master`.
+1. Fork the repo and create your branch from `main`.
 2. If you've changed something, update the documentation.
 3. Make sure your code lints (using black).
 4. Test you contribution.
 5. Issue that pull request!
 
-## Any contributions you make will be under the MIT Software License
+## Any contributions you make will be under the Apache 2.0 License
 
-In short, when you submit code changes, your submissions are understood to be under the same [MIT License](http://choosealicense.com/licenses/mit/) that covers the project. Feel free to contact the maintainers if that's a concern.
+In short, when you submit code changes, your submissions are understood to be under the same [Apache 2.0 License](https://choosealicense.com/licenses/apache-2.0/) that covers the project. Feel free to contact the maintainers if that's a concern.
 
 ## Report bugs using Github's [issues](../../issues)
 
@@ -48,7 +48,7 @@ Use [black](https://github.com/ambv/black) to make sure the code follows the sty
 
 ## Test your code modification
 
-This custom component is based on [integration_blueprint template](https://github.com/custom-components/integration_blueprint).
+This custom component is inspired by (ie. derived from) the [integration_blueprint template](https://github.com/custom-components/integration_blueprint).
 
 It comes with development environment in a container, easy to launch
 if you use Visual Studio Code. With this container you will have a stand alone
@@ -56,6 +56,8 @@ Home Assistant instance running and already configured with the included
 [`.devcontainer/configuration.yaml`](./.devcontainer/configuration.yaml)
 file.
 
+See the [Developer Notes](./README.md#development-notes) for more information.
+
 ## License
 
-By contributing, you agree that your contributions will be licensed under its MIT License.
+By contributing, you agree that your contributions will be licensed under its Apache 2.0 License.
