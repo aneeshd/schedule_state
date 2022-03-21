@@ -46,29 +46,13 @@ async def test_basic_setup(hass: HomeAssistant) -> None:
     """Test basic schedule_state setup."""
     now = make_testtime(4, 0)
 
+    with open('tests/test000.yaml', "r") as f:
+        config = yaml.safe_load(f)
+
     with patch(TIME_FUNCTION_PATH, return_value=now) as p:
         await setup_test_entities(
             hass,
-            {
-                "platform": DOMAIN,
-                CONF_NAME: "Sleep Schedule",
-                CONF_REFRESH: "1:00:00",
-                CONF_EVENTS: [
-                    {
-                        CONF_END: "5:30",
-                        CONF_STATE: "asleep",
-                    },
-                    {
-                        CONF_START: "5:30",
-                        CONF_END: "22:30",
-                        CONF_STATE: "awake",
-                    },
-                    {
-                        CONF_START: "22:30",
-                        CONF_STATE: "asleep",
-                    },
-                ],
-            },
+            config[0],
         )
 
         assert p.called
@@ -102,6 +86,58 @@ async def test_basic_setup(hass: HomeAssistant) -> None:
     # check that we have reverted back to normal schedule
     now += timedelta(hours=2)  # 22:40
     await check_state_at_time(hass, sensor, now, "asleep")
+
+async def test_overrides(hass: HomeAssistant) -> None:
+    """Test schedule_state overrides."""
+    now = make_testtime(4, 0)
+
+    with open('tests/test000.yaml', "r") as f:
+        config = yaml.safe_load(f)
+
+    with patch(TIME_FUNCTION_PATH, return_value=now) as p:
+        await setup_test_entities(
+            hass,
+            config[0],
+        )
+
+        assert p.called
+        assert p.return_value == now
+
+    # get the "Sleep Schedule" sensor
+    sensor = [e for e in hass.data["sensor"].entities][-1]
+
+    now += timedelta(minutes=10)  # 4:10
+    with patch(TIME_FUNCTION_PATH, return_value=now) as p:
+        await sensor.async_update_ha_state(force_refresh=True)
+
+        entity_state = check_state(hass, "sensor.sleep_schedule", "asleep", p, now)
+        assert entity_state.attributes["friendly_name"] == "Sleep Schedule"
+
+    now += timedelta(hours=16)  # 20:10
+    await check_state_at_time(hass, sensor, now, "awake")
+
+    # add an invalid override
+    await set_override(hass, "sensor.sleep_schedule", now, "drowsy")
+
+    # add an override
+    now += timedelta(minutes=10)  # 20:20
+    await set_override(hass, "sensor.sleep_schedule", now, "drowsy", duration=15)
+
+    # check that override state is en effect
+    now += timedelta(minutes=10)  # 20:30
+    await check_state_at_time(hass, sensor, now, "drowsy")
+
+    # clear the override and check that we are back to normal
+    now += timedelta(minutes=1)  # 20:31
+    await clear_overrides(hass, "sensor.sleep_schedule", now)
+    now += timedelta(minutes=1)  # 20:32
+    await check_state_at_time(hass, sensor, now, "awake")
+
+    # recalculate the schedule - no change expected - this service is not so useful anymore
+    now += timedelta(minutes=1)  # 20:33
+    await recalculate(hass, "sensor.sleep_schedule", now)
+    now += timedelta(minutes=1)  # 20:34
+    await check_state_at_time(hass, sensor, now, "awake")
 
 
 def schedule_modified_by_template(configfile: str):
@@ -261,6 +297,36 @@ async def set_override(hass, target, now, state, start=None, end=None, duration=
             DOMAIN,
             "set_override",
             service_data=data,
+            blocking=True,
+            target={
+                "entity_id": target,
+            },
+        )
+
+        assert p.called
+        assert p.return_value == now
+
+
+async def clear_overrides(hass, target, now):
+    with patch(TIME_FUNCTION_PATH, return_value=now) as p:
+        await hass.services.async_call(
+            DOMAIN,
+            "clear_overrides",
+            blocking=True,
+            target={
+                "entity_id": target,
+            },
+        )
+
+        assert p.called
+        assert p.return_value == now
+
+
+async def recalculate(hass, target, now):
+    with patch(TIME_FUNCTION_PATH, return_value=now) as p:
+        await hass.services.async_call(
+            DOMAIN,
+            "recalculate",
             blocking=True,
             target={
                 "entity_id": target,

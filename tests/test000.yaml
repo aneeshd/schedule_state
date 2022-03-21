@@ -1,0 +1,11 @@
+- platform: schedule_state
+  name: Sleep Schedule
+  refresh: "1:00:00"
+  events:
+    - state: "asleep"
+      end: "5:30"
+    - state: "awake"
+      start: "5:30"
+      end: "22:30"
+    - state: asleep
+      start: "22:30"

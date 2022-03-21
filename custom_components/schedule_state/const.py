@@ -10,8 +10,6 @@ PLATFORMS = ["sensor"]
 DEFAULT_NAME = "Schedule State Sensor"
 DEFAULT_STATE = "default"
 
-SCAN_INTERVAL = timedelta(seconds=60)
-
 CONF_EVENTS = "events"
 CONF_START = "start"
 CONF_START_TEMPLATE = "start_template"

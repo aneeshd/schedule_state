@@ -10,6 +10,10 @@ Instead, it separates the concepts of *when* you want something done,
 and *what* to do when that state arrives. Use `schedule_state` to handle the *when*,
 and standard Home Assistant tools to handle the *what*.
 
+`schedule_state` allows you to create sensors that provide arbitrary string values, 
+based on the time of day and other criteria. Home Assistant can then use the state of these
+sensors to trigger other automations.
+
 ***
 
 [![GitHub Release][releases-shield]][releases]
@@ -146,10 +150,15 @@ Template values are refreshed at every `refresh` interval, or whenever the state
 
 ### `recalculate`
 
-Forces the schedule to be recalculated. This is useful if you have conditionals or templates in the schedule definition,
-and you would like the schedule to be updated based on these changes.
+Forces the schedule to be recalculated. This is useful if you have conditionals or templates 
+in the schedule definition, and you would like the schedule to be updated based on these changes.
 
 This is cleaner than re-loading, as it prevents the sensor from becoming "unavailable".
+
+Note: as of [v0.12.0](https://github.com/aneeshd/schedule_state/releases/tag/0.12.0), 
+`schedule_state` will (should) automatically reload the schedule definition if any 
+referenced conditionals or templates have been updated. As a result, this service should
+not be needed if everything is working properly.
 
 ### `set_override`
 
@@ -166,7 +175,45 @@ The override can be specified in four different ways:
 
 ### `clear_overrides`
 
-Clears and overrides defined for the schedule.
+Clears any overrides defined for the schedule.
+
+## Development Notes
+
+There are (at least) 3 modes in which development and testing can be performed.
+
+ - Standalone using pytest, `schedule_state`, and its dependencies
+ - Home Assistant [devcontainer](https://developers.home-assistant.io/docs/development_environment)
+ - A real Home Assistant instance
+
+This section provides some notes on each type of development environment, mostly as a reminder for me.
+
+### pytest
+
+ - Use the provided Pipfile to setup the development environment
+ - `pipenv shell`
+ - `pipenv install`
+ - `python -m pytest tests/`
+
+Running pytest directly fails to find some of the installed dependencies, not sure why.
+
+### devcontainer
+
+ - Open `schedule_state` repo in VS Code
+ - Re-open in container
+ - Use standard [devcontainer](https://developers.home-assistant.io/docs/development_environment) development methods
+
+### On a real HA instance
+
+Code changes require HA to be re-started, so try to get as much fixed as possible using either of the two previous methods.
+
+Enable logging for `schedule_state`:
+
+```
+logger:
+  default: warning
+  logs:
+    custom_components.schedule_state: debug
+```
 
 ## Contributions are welcome!
 

@@ -232,15 +232,17 @@ class ScheduleSensor(SensorEntity):
     async def async_set_override(self, state: str, start, end, duration):
         """Set override state."""
         _LOGGER.info(f"{self._name}: override to {state} for {start} {end} {duration}")
-        if self.data.add_override(state, start, end, duration):
-            await self.data.process_events()
+        if self.data.set_override(state, start, end, duration):
+            return await self.data.process_events()
+        return False
 
     async def async_clear_overrides(self):
         """Clear overrides, if any."""
         _LOGGER.info(f"{self._name}: clear overrides")
         if self.data.clear_overrides():
-            await self.data.process_events()
-
+            return await self.data.process_events()
+        return False
+        
 
 class ScheduleSensorData:
     """The class for handling the state computation."""
@@ -433,7 +435,7 @@ class ScheduleSensorData:
         _LOGGER.debug(f"{self.name}: using default state ({nu})")
         self.value = None
 
-    def add_override(self, state, start, end, duration):
+    def set_override(self, state, start, end, duration):
         now = dt.as_local(dt_now())
         allow_split = True
 
