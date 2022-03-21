@@ -46,7 +46,7 @@ async def test_basic_setup(hass: HomeAssistant) -> None:
     """Test basic schedule_state setup."""
     now = make_testtime(4, 0)
 
-    with open('tests/test000.yaml', "r") as f:
+    with open("tests/test000.yaml", "r") as f:
         config = yaml.safe_load(f)
 
     with patch(TIME_FUNCTION_PATH, return_value=now) as p:
@@ -87,11 +87,12 @@ async def test_basic_setup(hass: HomeAssistant) -> None:
     now += timedelta(hours=2)  # 22:40
     await check_state_at_time(hass, sensor, now, "asleep")
 
+
 async def test_overrides(hass: HomeAssistant) -> None:
     """Test schedule_state overrides."""
     now = make_testtime(4, 0)
 
-    with open('tests/test000.yaml', "r") as f:
+    with open("tests/test000.yaml", "r") as f:
         config = yaml.safe_load(f)
 
     with patch(TIME_FUNCTION_PATH, return_value=now) as p:

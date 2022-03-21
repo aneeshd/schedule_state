@@ -242,7 +242,7 @@ class ScheduleSensor(SensorEntity):
         if self.data.clear_overrides():
             return await self.data.process_events()
         return False
-        
+
 
 class ScheduleSensorData:
     """The class for handling the state computation."""
