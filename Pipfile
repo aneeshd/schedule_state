@@ -9,7 +9,7 @@ pytest-cov = "*"
 portion = "==2.2.0"
 PyYAML = "*"
 homeassistant = "2022.3.5"
-pytest-homeassistant-custom-component = "==0.7.7"
+pytest-homeassistant-custom-component = "==0.8.5"
 # lock homeassistant and pytest-homeassistant-custom-component versions
 #homeassistant = "2022.2.8"
 #pytest-homeassistant-custom-component = "==0.6.14"
