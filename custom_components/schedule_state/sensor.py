@@ -406,7 +406,7 @@ class ScheduleSensorData:
         now = dt.as_local(dt_now())
         nu = time(now.hour, now.minute)
 
-        self.overrides = [o for o in self.overrides if o["expires"] > now]
+        self.overrides = [o for o in self.overrides if dt.as_local(o["expires"]) > now]
         for o in self.overrides:
             _LOGGER.debug(
                 f"{self.name}: override = {o['start']} - {o['end']} == {o['state']} [expires {o['expires']}]"
