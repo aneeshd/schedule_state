@@ -1,8 +1,9 @@
 - platform: schedule_state
-  name: test001
+  name: test004
   default_state: "off"
   events:
     - state: "on"
-      start_template: "{% if is_state('input_boolean.mode', 'off') %} 9:15 {% else %} 10:30 {% endif %}"
+      # template error: no default provided for is_state
+      start_template: "{% if is_state('input_boolean.mode') %} 9:15 {% else %} 10:30 {% endif %}"
       end_template: "{% if is_state('input_boolean.mode', 'off') %} 11:30 {% else %} 13:30 {% endif %}"
       comment: Time as hh:mm

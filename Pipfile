@@ -25,4 +25,4 @@ black = "*"
 python_version = "3.10"
 
 [scripts]
-test = "pytest"
+test = "pytest --log-file ./pytest.log"

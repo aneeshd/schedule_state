@@ -1,5 +1,5 @@
   - platform: schedule_state
-    name: heating schedule
+    name: test011
     default_state: nighttime
     events:
       - start: "0:00"

@@ -1,5 +1,5 @@
 - platform: schedule_state
-  name: Lights
+  name: test003
   default_state: "off"
   events:
     - state: "on"

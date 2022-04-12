@@ -4,3 +4,7 @@ venv
 .venv
 .coverage
 .idea
+lib/
+bin/
+pytest.log
+.python-version
