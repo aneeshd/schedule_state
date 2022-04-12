@@ -348,6 +348,7 @@ class ScheduleSensorData:
 
         elif s is not None:
             if st is not None:
+                # TODO fix schema so that this can't happen
                 _LOGGER.debug(
                     f"{self.name}: ... ignoring {prefixt} since {prefix} was provided"
                 )
@@ -370,13 +371,15 @@ class ScheduleSensorData:
                 self.entities.add(e)
             ret = self.guess_value(temp)
 
-        if ret is None:
-            ret = default
+            if ret is None:
+                _LOGGER.error(f"{self.name}: FAILED - could not parse '{temp}'")
 
         _LOGGER.debug(f"{self.name}: ... >> {prefix} time: {ret}")
         return ret
 
     def guess_value(self, text):
+        """After evaluating a template, try to figure out what the resulting value means.
+        We are looking for a time value. Dates don't matter."""
         try:
             date = dt.parse_datetime(text)
             if date is not None:

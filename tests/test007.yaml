@@ -1,0 +1,11 @@
+- platform: schedule_state
+  name: test007
+  refresh: "1:00:00"
+  events:
+    - state: "asleep"
+      end_template: "{{ '2027-04-13Z05:30' }}"
+    - state: "awake"
+      start_template: "{{ '2010-11-01Z05:30' }}"
+      end_template: "{{ '1984-07-04Z22:30' }}"
+    - state: asleep
+      start_template: "{{ '2015-01-09Z22:30' }}"

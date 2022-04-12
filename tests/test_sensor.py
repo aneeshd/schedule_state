@@ -11,6 +11,7 @@ from homeassistant import setup
 from homeassistant.components.sensor import DOMAIN as SENSOR
 from homeassistant.core import HomeAssistant
 from homeassistant.components import input_boolean
+from homeassistant.util import dt
 
 from custom_components.schedule_state.const import *
 
@@ -22,6 +23,8 @@ TIME_FUNCTION_PATH = "custom_components.schedule_state.sensor.dt_now"
 
 DATE_FUNCTION_PATH = "homeassistant.components.workday.binary_sensor.get_date"
 
+test_tz = dt.get_time_zone("America/Toronto")
+dt.set_default_time_zone(test_tz)
 
 async def setup_test_entities(hass: HomeAssistant, config_dict: dict[str, Any]) -> None:
     """Set up a test schedule_state sensor entity."""
@@ -42,7 +45,7 @@ async def test_blank_setup(hass: HomeAssistant) -> None:
     await setup_test_entities(hass, {"platform": DOMAIN})
 
 
-def basic_test(configfile: str):
+def basic_test(configfile: str, overrides: dict = {}):
     sensorname = configfile.replace("tests/", "").replace(".yaml", "")
 
     async def fn(hass: HomeAssistant) -> None:
@@ -61,6 +64,13 @@ def basic_test(configfile: str):
             assert p.called
             assert p.return_value == now
 
+        def check_override(phase, expected):
+            if phase in overrides:
+                # overrides are due to errors, so check that they are identified as such
+                assert expected in sensor._attributes["errors"]
+                return overrides[phase]
+            return expected
+
         # get the "Sleep Schedule" sensor
         sensor = [e for e in hass.data["sensor"].entities][-1]
 
@@ -68,7 +78,7 @@ def basic_test(configfile: str):
         with patch(TIME_FUNCTION_PATH, return_value=now) as p:
             await sensor.async_update_ha_state(force_refresh=True)
 
-            entity_state = check_state(hass, f"sensor.{sensorname}", "asleep", p, now)
+            entity_state = check_state(hass, f"sensor.{sensorname}", check_override("asleep1", "asleep"), p, now)
             assert entity_state.attributes["friendly_name"] == sensorname
 
         now += timedelta(hours=16)  # 20:10
@@ -88,12 +98,17 @@ def basic_test(configfile: str):
 
         # check that we have reverted back to normal schedule
         now += timedelta(hours=2)  # 22:40
-        await check_state_at_time(hass, sensor, now, "asleep")
+        await check_state_at_time(hass, sensor, now, check_override("asleep2", "asleep"))
 
     return fn
 
 test_basic_setup = basic_test("tests/test000.yaml")
 
+test_basic_setup_timestamps = basic_test("tests/test006.yaml")
+
+test_basic_setup_isoformat = basic_test("tests/test007.yaml")
+
+test_basic_setup_with_errors = basic_test("tests/test008.yaml", overrides=dict(asleep1="default"))
 
 async def test_basic_setup_with_error(hass: HomeAssistant) -> None:
     """Test basic schedule_state setup."""
@@ -361,14 +376,14 @@ async def test_schedule_using_condition(hass: HomeAssistant):
 
 
 async def check_state_at_time(hass, sensor, now, value):
-    _LOGGER.info(f'check_state_at_time: {now} {value}')
+    _LOGGER.info(f'check_state_at_time {now} for {sensor.entity_id} - expect {value}')
     with patch(TIME_FUNCTION_PATH, return_value=now) as p:
         await sensor.async_update_ha_state(force_refresh=True)
         check_state(hass, sensor.entity_id, value, p, now)
 
 
 def check_state(hass, name, value, p=None, now=None):
-    _LOGGER.debug("check state of %s", name)
+    _LOGGER.debug(f"check state of {name} - expect {value}")
     entity_state = hass.states.get(name)
     assert entity_state
     if p is not None:
@@ -434,4 +449,4 @@ async def recalculate(hass, target, now):
 
 
 def make_testtime(h: int, m: int):
-    return datetime(2021, 11, 20, h, m, tzinfo=timezone.utc)
+    return datetime(2021, 11, 20, h, m, tzinfo=test_tz)

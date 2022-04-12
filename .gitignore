@@ -8,3 +8,5 @@ lib/
 bin/
 pytest.log
 .python-version
+.DS_Store
+*~

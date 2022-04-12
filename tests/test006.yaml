@@ -1,0 +1,22 @@
+- platform: schedule_state
+  name: test006
+  refresh: "1:00:00"
+  events:
+    - state: "asleep"
+      end_template: "{{ 1807608600.0 }}"
+    - state: "awake"
+      start_template: "{{ 1288603800 }}"
+      end_template: "{{ 457842600 }}"
+    - state: asleep
+      start_template: "{{ 1420860600.0 }}"
+
+# This is the source of the timestamps used above. The dates are irrelevant.
+# Timestamp processing only occurs for templates.
+# >>> datetime.fromisoformat('2027-04-13 05:30').timestamp()
+# 1807608600.0
+# >>> datetime.fromisoformat('2010-11-01 05:30').timestamp()
+# 1288603800.0
+# >>> datetime.fromisoformat('1984-07-04 22:30').timestamp()
+# 457842600.0
+# >>> datetime.fromisoformat('2015-01-09 22:30').timestamp()
+# 1420860600.0
