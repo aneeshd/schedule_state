@@ -26,6 +26,7 @@ DATE_FUNCTION_PATH = "homeassistant.components.workday.binary_sensor.get_date"
 test_tz = dt.get_time_zone("America/Toronto")
 dt.set_default_time_zone(test_tz)
 
+
 async def setup_test_entities(hass: HomeAssistant, config_dict: dict[str, Any]) -> None:
     """Set up a test schedule_state sensor entity."""
     ret = await setup.async_setup_component(
@@ -78,7 +79,13 @@ def basic_test(configfile: str, overrides: dict = {}):
         with patch(TIME_FUNCTION_PATH, return_value=now) as p:
             await sensor.async_update_ha_state(force_refresh=True)
 
-            entity_state = check_state(hass, f"sensor.{sensorname}", check_override("asleep1", "asleep"), p, now)
+            entity_state = check_state(
+                hass,
+                f"sensor.{sensorname}",
+                check_override("asleep1", "asleep"),
+                p,
+                now,
+            )
             assert entity_state.attributes["friendly_name"] == sensorname
 
         now += timedelta(hours=16)  # 20:10
@@ -98,9 +105,12 @@ def basic_test(configfile: str, overrides: dict = {}):
 
         # check that we have reverted back to normal schedule
         now += timedelta(hours=2)  # 22:40
-        await check_state_at_time(hass, sensor, now, check_override("asleep2", "asleep"))
+        await check_state_at_time(
+            hass, sensor, now, check_override("asleep2", "asleep")
+        )
 
     return fn
+
 
 test_basic_setup = basic_test("tests/test000.yaml")
 
@@ -108,7 +118,10 @@ test_basic_setup_timestamps = basic_test("tests/test006.yaml")
 
 test_basic_setup_isoformat = basic_test("tests/test007.yaml")
 
-test_basic_setup_with_errors = basic_test("tests/test008.yaml", overrides=dict(asleep1="default"))
+test_basic_setup_with_errors = basic_test(
+    "tests/test008.yaml", overrides=dict(asleep1="default")
+)
+
 
 async def test_basic_setup_with_error(hass: HomeAssistant) -> None:
     """Test basic schedule_state setup."""
@@ -130,7 +143,7 @@ async def test_basic_setup_with_error(hass: HomeAssistant) -> None:
     sensor = [e for e in hass.data["sensor"].entities][-1]
 
     # check that the state with the error is detected
-    assert 'awake' in sensor._attributes["errors"]
+    assert "awake" in sensor._attributes["errors"]
 
     now += timedelta(minutes=10)  # 4:10
     with patch(TIME_FUNCTION_PATH, return_value=now) as p:
@@ -146,6 +159,7 @@ async def test_basic_setup_with_error(hass: HomeAssistant) -> None:
     # check that the rest of the schedule is ok
     now += timedelta(hours=2, minutes=30)  # 22:40
     await check_state_at_time(hass, sensor, now, "asleep")
+
 
 async def test_overrides(hass: HomeAssistant) -> None:
     """Test schedule_state overrides."""
@@ -223,7 +237,7 @@ def schedule_modified_by_template(configfile: str):
             sensor = [e for e in hass.data["sensor"].entities][-1]
             check_state(hass, f"sensor.{sensorname}", "off", p, now)
 
-        assert len(sensor._attributes["errors"])==0
+        assert len(sensor._attributes["errors"]) == 0
 
         hass.states.async_set(mode_switch, "on")
         await hass.async_block_till_done()
@@ -265,7 +279,7 @@ def schedule_modified_by_template_with_error(configfile: str):
             sensor = [e for e in hass.data["sensor"].entities][-1]
             check_state(hass, f"sensor.{sensorname}", "off", p, now)
 
-        assert 'on' in sensor._attributes["errors"]
+        assert "on" in sensor._attributes["errors"]
 
         hass.states.async_set(mode_switch, "off")
         await hass.async_block_till_done()
@@ -296,8 +310,8 @@ test_schedule_modified_by_template3 = schedule_modified_by_template(
     "tests/test003.yaml"
 )
 
-test_schedule_modified_by_template4_with_error = schedule_modified_by_template_with_error(
-    "tests/test004.yaml"
+test_schedule_modified_by_template4_with_error = (
+    schedule_modified_by_template_with_error("tests/test004.yaml")
 )
 
 
@@ -376,7 +390,7 @@ async def test_schedule_using_condition(hass: HomeAssistant):
 
 
 async def check_state_at_time(hass, sensor, now, value):
-    _LOGGER.info(f'check_state_at_time {now} for {sensor.entity_id} - expect {value}')
+    _LOGGER.info(f"check_state_at_time {now} for {sensor.entity_id} - expect {value}")
     with patch(TIME_FUNCTION_PATH, return_value=now) as p:
         await sensor.async_update_ha_state(force_refresh=True)
         check_state(hass, sensor.entity_id, value, p, now)
