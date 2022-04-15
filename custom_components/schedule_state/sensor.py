@@ -292,9 +292,17 @@ class ScheduleSensorData:
                     referenced = condition.async_extract_entities(conf)
                     _LOGGER.debug(f"... entities used: {referenced}")
                     self.entities.update(referenced)
-                if not cond_func(variables):
+
+                cond_result = cond_func(variables)
+                if cond_result is False:
                     _LOGGER.debug(
                         f"{self.name}: {state}: condition was not satisfied - skipping"
+                    )
+                    continue
+                elif cond_result is None:
+                    self.error_states.add(state)
+                    _LOGGER.error(
+                        f"{self.name}: {state}: error evaluating condition - skipping"
                     )
                     continue
 
@@ -601,7 +609,7 @@ async def _async_process_if(hass, name, if_configs):
                 name,
                 ConditionErrorContainer("condition", errors=errors),
             )
-            return False
+            return None
 
         return True
 

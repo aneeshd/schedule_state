@@ -117,6 +117,10 @@ weekends or [holidays](https://www.home-assistant.io/integrations/workday/).
 
 Conditions are re-evaluated whenever the state of any entities referenced in the condition change.
 
+As of [v0.13.1](https://github.com/aneeshd/schedule_state/releases/tag/0.13.1), the icon of the `schedule_state`
+sensor will change to an "alert" (`mdi:calendar-alert`) if an error is detected while evaluating the condition.
+This indicates that the condition definition may need to be examined.
+
 ## Templates
 
 Start and/or end times can be specified using [templates](https://www.home-assistant.io/docs/configuration/templating/).
