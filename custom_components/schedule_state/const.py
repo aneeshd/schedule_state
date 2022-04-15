@@ -1,6 +1,6 @@
 """Constants for schedule_state integration"""
 
-from homeassistant.const import CONF_CONDITION, CONF_NAME, CONF_STATE, ATTR_ENTITY_ID
+from homeassistant.const import CONF_CONDITION, CONF_NAME, CONF_STATE, ATTR_ENTITY_ID, CONF_ICON
 from datetime import timedelta
 
 DOMAIN = "schedule_state"
@@ -19,3 +19,4 @@ CONF_DEFAULT_STATE = "default_state"
 CONF_REFRESH = "refresh"
 CONF_COMMENT = "comment"
 CONF_DURATION = "duration"
+CONF_ERROR_ICON = "error_icon"

@@ -2,18 +2,22 @@
     name: Thermostat State
     default_state: normal
     refresh: "24:00:00"
+    icon: mdi:thermometer
     events:
       - end: "5:30"
         state: sleep
+        icon: mdi:sleep
       - start: "5:30"
         end: "6:30"
         state: toasty
+        icon: mdi:thermometer-plus
       - start: "6:30"
         end: "15:30"
         state: normal
       - start: "15:30"
         end: "17:30"
         state: energy-saving
+        icon: mdi:thermometer-minus
       - start: "17:30"
         end: "20:00"
         state: toasty

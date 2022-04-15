@@ -41,11 +41,14 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
                 vol.Required(CONF_STATE, default=DEFAULT_STATE): cv.string,
                 vol.Optional(CONF_COMMENT): cv.string,
                 vol.Optional(CONF_CONDITION): _CONDITION_SCHEMA,
+                vol.Optional(CONF_ICON): cv.icon,
             }
         ],
         vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
         vol.Optional(CONF_DEFAULT_STATE, default=DEFAULT_STATE): cv.string,
         vol.Optional(CONF_REFRESH, default="6:00:00"): cv.time_period_str,
+        vol.Optional(CONF_ICON, default="mdi:calendar-check"): cv.icon,
+        vol.Optional(CONF_ERROR_ICON, default="mdi:calendar-alert"): cv.icon,
     }
 )
 
@@ -62,6 +65,7 @@ OVERRIDE_SERVICE_SCHEMA = vol.Schema(
         vol.Optional(CONF_DURATION): cv.positive_int,
         vol.Optional(CONF_START): cv.time,
         vol.Optional(CONF_END): cv.time,
+        vol.Optional(CONF_ICON): cv.icon,
     }
 )
 
@@ -129,6 +133,7 @@ async def async_setup_platform(
                 service.data.get(CONF_START, None),
                 service.data.get(CONF_END, None),
                 service.data.get(CONF_DURATION, None),
+                service.data.get(CONF_ICON, None),
             )
             update_tasks.append(target_device.async_update_ha_state(True))
 
@@ -164,20 +169,21 @@ async def async_setup_platform(
         schema=CLEAR_OVERRIDES_SERVICE_SCHEMA,
     )
 
-    default_state = config.get(CONF_DEFAULT_STATE)
-    async_add_entities([ScheduleSensor(hass, data, name, default_state)], True)
+    async_add_entities([ScheduleSensor(hass, name, data, config)], True)
 
 
 class ScheduleSensor(SensorEntity):
     """Representation of a sensor that returns a state name based on a predefined schedule."""
 
-    def __init__(self, hass, data, name, default_state):
+    def __init__(self, hass, name, data, config):
         """Initialize the sensor."""
         self.data = data
         self._attributes = {}
         self._name = name
         self._state = None
-        self._default_state = default_state
+        self._default_state = config.get(CONF_DEFAULT_STATE)
+        self._icon = config.get(CONF_ICON)
+        self._error_icon = config.get(CONF_ERROR_ICON)
 
     async def async_added_to_hass(self):
         """Handle added to Hass."""
@@ -223,23 +229,23 @@ class ScheduleSensor(SensorEntity):
             value = self._default_state
         self._state = value
         self._attributes["states"] = self.data.known_states
-        self._attributes["start"] = self.data.start
-        self._attributes["end"] = self.data.end
+        self._attributes["start"] = self.data.attributes.get('start', None)
+        self._attributes["end"] = self.data.attributes.get('end', None)
         self._attributes["errors"] = self.data.error_states
         if len(self.data.error_states):
-            self._attr_icon = "mdi:calendar-alert"
+            self._attr_icon = self._error_icon
         else:
-            self._attr_icon = "mdi:calendar-check"
+            self._attr_icon = self.data.attributes.get('icon', None) or self._icon
 
     async def async_recalculate(self):
         """Recalculate schedule state."""
         _LOGGER.info(f"{self._name}: recalculate")
         await self.data.process_events()
 
-    async def async_set_override(self, state: str, start, end, duration):
+    async def async_set_override(self, state: str, start, end, duration, icon):
         """Set override state."""
         _LOGGER.info(f"{self._name}: override to {state} for {start} {end} {duration}")
-        if self.data.set_override(state, start, end, duration):
+        if self.data.set_override(state, start, end, duration, icon):
             return await self.data.process_events()
         return False
 
@@ -266,10 +272,10 @@ class ScheduleSensorData:
         self.overrides = []
         self.known_states = set()
         self.error_states = set()
-        self.start = None
-        self.end = None
+        self.attributes = {}
         self.entities = set()
         self.force_refresh = None
+        self.icon_map = {}
 
     async def process_events(self):
         """Process the list of events and derive the schedule for the day."""
@@ -283,6 +289,10 @@ class ScheduleSensorData:
             state = event.get(CONF_STATE, DEFAULT_STATE)
             cond = event.get(CONF_CONDITION, None)
             self.known_states.add(state)
+
+            icon = event.get(CONF_ICON, None)
+            if icon is not None:
+                self.icon_map[state] = icon
 
             variables = {}
             if cond is not None:
@@ -458,8 +468,7 @@ class ScheduleSensorData:
                 f"{self.name}: override = {o['start']} - {o['end']} == {o['state']} [expires {o['expires']}]"
             )
 
-        self.start = None
-        self.end = None
+        self.attributes = {}
         time_since_refresh = now - self.refresh_time
         if time_since_refresh.total_seconds() >= self.refresh.total_seconds() or (
             self.force_refresh is not None and now > self.force_refresh
@@ -472,15 +481,16 @@ class ScheduleSensorData:
                 _LOGGER.debug(f"{self.name}: current state is {state} ({nu})")
                 for i in self.states[state]._intervals:
                     if nu >= i.lower and nu < i.upper:
-                        self.start = i.lower.isoformat()
-                        self.end = i.upper.isoformat()
+                        self.attributes['start'] = i.lower.isoformat()
+                        self.attributes['end'] = i.upper.isoformat()
                 self.value = state
+                self.attributes['icon'] = self.icon_map.get(state, None)
                 return
 
         _LOGGER.debug(f"{self.name}: using default state ({nu})")
         self.value = None
 
-    def set_override(self, state, start, end, duration):
+    def set_override(self, state, start, end, duration, icon):
         now = dt.as_local(dt_now())
         allow_split = True
 
@@ -524,6 +534,8 @@ class ScheduleSensorData:
 
         ev = Override(state, start.time(), end.time(), end + timedelta(seconds=30))
         self.overrides.append(ev)
+        if icon is not None:
+            self.icon_map[state] = icon
         return True
 
     def clear_overrides(self):

@@ -1,5 +1,6 @@
   - platform: schedule_state
     name: Festive Lights State
+    icon: mdi:pine-tree
     events:
       - state: "off"
       - state: "on"

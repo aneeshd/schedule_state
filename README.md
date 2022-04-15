@@ -54,8 +54,10 @@ Create a `schedule_state` sensor:
 ```
   - platform: schedule_state
     name: Some descriptive name
-    refresh: "6:00:00"       # this is the default
-    default_state: default   # this is the default
+    refresh: "6:00:00"                  # this is the default
+    default_state: default              # this is the default
+    icon: mdi:calendar-check            # this is the default
+    error_icon: mdi:calendar-alert      # this is the default
 ```
 
 By default, the sensor returns the name provided as the `default_state`. Configuration is built up in layers of events.
@@ -67,14 +69,20 @@ This simple configuration will cause the sensor to report `sleep` or `awake` dep
 You can create automations that trigger on the sensor state. Or, you can use the value of the sensor state as a
 condition in your automations.
 
+As of [v0.13.1](https://github.com/aneeshd/schedule_state/releases/tag/0.13.1), each state can have a custom icon.
+Pick any icon that you can find on [materialdesignicons.com](materialdesignicons.com) and prefix the name with `mdi:`.
+Note: the last icon assigned to a state is used for all occurrences of that state.
+
 ```
     events:
       - start: "0:00"
         end: "5:30"
         state: sleep
+        icon: mdi:sleep
       - start: "5:30"
         end: "22:30"
         state: awake
+        icon: mdi:walk
       - start: "22:30"
         state: sleep
 ```
@@ -184,6 +192,13 @@ The override can be specified in four different ways:
 | start, duration | Override for `duration` minutes, starting at the next occurrence of `start`. |
 | end, duration   | Override for `duration` minutes, ending at the next occurrence of `end`. |
 | start, end      | Override from the next occurrence to `start` to the next occurrence of `end`. |
+
+Other data required for this service call:
+
+| Data            | Meaning |
+|-----------------|---------|
+| state           | The state to apply for this override |
+| icon            | Optionaly provide an icon for this state |
 
 ### `clear_overrides`
 
