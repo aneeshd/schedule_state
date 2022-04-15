@@ -5,6 +5,7 @@ from datetime import time, timedelta, datetime
 import logging
 from pprint import pformat
 import asyncio
+import hashlib
 
 from homeassistant.components.sensor import PLATFORM_SCHEMA, SensorEntity
 from homeassistant.core import HomeAssistant, callback
@@ -184,6 +185,9 @@ class ScheduleSensor(SensorEntity):
         self._default_state = config.get(CONF_DEFAULT_STATE)
         self._icon = config.get(CONF_ICON)
         self._error_icon = config.get(CONF_ERROR_ICON)
+
+        unique_id = hashlib.sha3_512(name.encode('utf-8')).hexdigest()
+        self._attr_unique_id = unique_id
 
     async def async_added_to_hass(self):
         """Handle added to Hass."""
