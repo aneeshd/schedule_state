@@ -186,7 +186,7 @@ class ScheduleSensor(SensorEntity):
         self._icon = config.get(CONF_ICON)
         self._error_icon = config.get(CONF_ERROR_ICON)
 
-        unique_id = hashlib.sha3_512(name.encode('utf-8')).hexdigest()
+        unique_id = hashlib.sha3_512(name.encode("utf-8")).hexdigest()
         self._attr_unique_id = unique_id
 
     async def async_added_to_hass(self):
@@ -233,13 +233,13 @@ class ScheduleSensor(SensorEntity):
             value = self._default_state
         self._state = value
         self._attributes["states"] = self.data.known_states
-        self._attributes["start"] = self.data.attributes.get('start', None)
-        self._attributes["end"] = self.data.attributes.get('end', None)
+        self._attributes["start"] = self.data.attributes.get("start", None)
+        self._attributes["end"] = self.data.attributes.get("end", None)
         self._attributes["errors"] = self.data.error_states
         if len(self.data.error_states):
             self._attr_icon = self._error_icon
         else:
-            self._attr_icon = self.data.attributes.get('icon', None) or self._icon
+            self._attr_icon = self.data.attributes.get("icon", None) or self._icon
 
     async def async_recalculate(self):
         """Recalculate schedule state."""
@@ -485,10 +485,10 @@ class ScheduleSensorData:
                 _LOGGER.debug(f"{self.name}: current state is {state} ({nu})")
                 for i in self.states[state]._intervals:
                     if nu >= i.lower and nu < i.upper:
-                        self.attributes['start'] = i.lower.isoformat()
-                        self.attributes['end'] = i.upper.isoformat()
+                        self.attributes["start"] = i.lower.isoformat()
+                        self.attributes["end"] = i.upper.isoformat()
                 self.value = state
-                self.attributes['icon'] = self.icon_map.get(state, None)
+                self.attributes["icon"] = self.icon_map.get(state, None)
                 return
 
         _LOGGER.debug(f"{self.name}: using default state ({nu})")

@@ -91,23 +91,25 @@ def basic_test(configfile: str, overrides: dict = {}, check_icon: bool = False):
         now += timedelta(hours=16)  # 20:10
         await check_state_at_time(hass, sensor, now, "awake")
         if check_icon:
-            assert sensor._attr_icon=="mdi:run"
+            assert sensor._attr_icon == "mdi:run"
 
         # add an override
         now += timedelta(minutes=10)  # 20:20
-        await set_override(hass, f"sensor.{sensorname}", now, "drowsy", duration=15, icon="mdi:cog")
+        await set_override(
+            hass, f"sensor.{sensorname}", now, "drowsy", duration=15, icon="mdi:cog"
+        )
 
         # check that override state is en effect
         now += timedelta(minutes=10)  # 20:30
         await check_state_at_time(hass, sensor, now, "drowsy")
         if check_icon:
-            assert sensor._attr_icon=="mdi:cog"
+            assert sensor._attr_icon == "mdi:cog"
 
         # check that override has expired
         now += timedelta(minutes=10)  # 20:40
         await check_state_at_time(hass, sensor, now, "awake")
         if check_icon:
-            assert sensor._attr_icon=="mdi:run"
+            assert sensor._attr_icon == "mdi:run"
 
         # check that we have reverted back to normal schedule
         now += timedelta(hours=2)  # 22:40
@@ -115,7 +117,7 @@ def basic_test(configfile: str, overrides: dict = {}, check_icon: bool = False):
             hass, sensor, now, check_override("asleep2", "asleep")
         )
         if check_icon:
-            assert sensor._attr_icon=="mdi:sleep"
+            assert sensor._attr_icon == "mdi:sleep"
 
     return fn
 
@@ -416,7 +418,9 @@ def check_state(hass, name, value, p=None, now=None):
     return entity_state
 
 
-async def set_override(hass, target, now, state, start=None, end=None, duration=None, icon=None):
+async def set_override(
+    hass, target, now, state, start=None, end=None, duration=None, icon=None
+):
     data = {CONF_STATE: state}
     if start is not None:
         data[CONF_START] = start
