@@ -71,6 +71,8 @@ CLEAR_OVERRIDES_SERVICE_SCHEMA = vol.Schema(
     }
 )
 
+MINUTES_TO_REFRESH_ON_ERROR = 5
+
 
 class Override(dict):
     def __init__(self, state, start, end, expires):
@@ -184,7 +186,7 @@ class ScheduleSensor(SensorEntity):
         @callback
         def recalc_callback(*args):
             _LOGGER.debug(f"{self.data.name}: something changed {args}")
-            self.data.force_refresh = True
+            self.data.force_refresh = dt.as_local(dt_now())
             self.schedule_update_ha_state(force_refresh=True)
 
         if len(self.data.entities):
@@ -224,6 +226,10 @@ class ScheduleSensor(SensorEntity):
         self._attributes["start"] = self.data.start
         self._attributes["end"] = self.data.end
         self._attributes["errors"] = self.data.error_states
+        if len(self.data.error_states):
+            self._attr_icon = "mdi:calendar-alert"
+        else:
+            self._attr_icon = "mdi:calendar-check"
 
     async def async_recalculate(self):
         """Recalculate schedule state."""
@@ -263,7 +269,7 @@ class ScheduleSensorData:
         self.start = None
         self.end = None
         self.entities = set()
-        self.force_refresh = False
+        self.force_refresh = None
 
     async def process_events(self):
         """Process the list of events and derive the schedule for the day."""
@@ -295,10 +301,20 @@ class ScheduleSensorData:
             start = await self.get_start(event)
             end = await self.get_end(event)
             if None in (start, end):
-                # there was a problem evaluating the template
+                # There was a problem evaluating the template.
+                # This can happen if the things that the template is dependent on have not been started up by HA yet...
+                # or it could be a problem with the template definition, it's doesn't seem possible to know which.
+                # Try to re-load it in a few minutes.
+                new_refresh_time = dt.as_local(dt_now()) + timedelta(
+                    minutes=MINUTES_TO_REFRESH_ON_ERROR
+                )
+                if self.force_refresh is not None:
+                    self.force_refresh = min(self.force_refresh, new_refresh_time)
+                else:
+                    self.force_refresh = new_refresh_time
                 self.error_states.add(state)
                 _LOGGER.error(
-                    f"{self.name}: {state}: error with event definition - skipping"
+                    f"{self.name}: {state}: error with event definition - skipping, will try again in {MINUTES_TO_REFRESH_ON_ERROR} minutes"
                 )
                 continue
 
@@ -437,12 +453,11 @@ class ScheduleSensorData:
         self.start = None
         self.end = None
         time_since_refresh = now - self.refresh_time
-        if (
-            time_since_refresh.total_seconds() >= self.refresh.total_seconds()
-            or self.force_refresh
+        if time_since_refresh.total_seconds() >= self.refresh.total_seconds() or (
+            self.force_refresh is not None and now > self.force_refresh
         ):
             await self.process_events()
-            self.force_refresh = False
+            self.force_refresh = None
 
         for state in self.states:
             if nu in self.states[state]:

@@ -10,7 +10,7 @@ Instead, it separates the concepts of *when* you want something done,
 and *what* to do when that state arrives. Use `schedule_state` to handle the *when*,
 and standard Home Assistant tools to handle the *what*.
 
-`schedule_state` allows you to create sensors that provide arbitrary string values, 
+`schedule_state` allows you to create sensors that provide arbitrary string values,
 based on the time of day and other criteria. Home Assistant can then use the state of these
 sensors to trigger other automations.
 
@@ -146,17 +146,25 @@ the [sun integration](https://www.home-assistant.io/integrations/sun/).
 
 Template values are refreshed at every `refresh` interval, or whenever the state of any entities referenced in the template change.
 
+Sometimes, errors can occur when evaluating valid templates. This is because Home Assistant may not yet have loaded the entities on
+which the template depends. As of [v0.13.0](https://github.com/aneeshd/schedule_state/releases/tag/0.13.0), `schedule_state`
+will re-evaluate the template again in a few minutes to guard against this condition. This gives HA some time to start everything up.
+
+Of course, it is possible that the template is not valid, but `schedule_state` cannot yet differentiate between these two scenarios.
+The icon of the `schedule_state` sensor will change to an "alert" (`mdi:calendar-alert`) to indicate that the template definition
+may need to be examined. In a future version, this force-refresh strategy may incorporate a timeout.
+
 ## Services
 
 ### `recalculate`
 
-Forces the schedule to be recalculated. This is useful if you have conditionals or templates 
+Forces the schedule to be recalculated. This is useful if you have conditionals or templates
 in the schedule definition, and you would like the schedule to be updated based on these changes.
 
 This is cleaner than re-loading, as it prevents the sensor from becoming "unavailable".
 
-Note: as of [v0.12.0](https://github.com/aneeshd/schedule_state/releases/tag/0.12.0), 
-`schedule_state` will (should) automatically reload the schedule definition if any 
+Note: as of [v0.12.0](https://github.com/aneeshd/schedule_state/releases/tag/0.12.0),
+`schedule_state` will (should) automatically reload the schedule definition if any
 referenced conditionals or templates have been updated. As a result, this service should
 not be needed if everything is working properly.
 
