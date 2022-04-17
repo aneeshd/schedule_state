@@ -375,7 +375,9 @@ class ScheduleSensorData:
                 states[state] = states[state] | i
 
         _LOGGER.info(f"{self.name}:\n{pformat(states)}")
-        self.attributes["schedule_image"] = draw_schedule_as_svg(states)
+        self.attributes["schedule_image"] = draw_schedule_as_svg(
+            states, len(self.known_states)
+        )
         self.states = states
         self.refresh_time = dt.as_local(dt_now())
 

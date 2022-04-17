@@ -70,3 +70,10 @@
       - start: "10:00"
         state: normal
         condition: *weekend
+
+      # vacation
+      - state: vacation
+        condition:
+          condition: state
+          entity_id: input_boolean.vacation_mode
+          state: "on"

@@ -16,7 +16,7 @@ SCHEDULE_HEIGHT = RIBBON_HEIGHT - RULER_HEIGHT - GAP
 SCHEDULE_Y = RULER_HEIGHT + GAP
 
 
-def draw_schedule_as_svg(states, palette_name="viridis"):
+def draw_schedule_as_svg(states, total_states=0, palette_name="viridis"):
     """Draw the schedule. Widths are in mintes. Heights are controlled by the contants above.
     Colormap currently hard-coded to Viridis (https://cran.r-project.org/web/packages/viridis/vignettes/intro-to-viridis.html)"""
 
@@ -32,9 +32,8 @@ def draw_schedule_as_svg(states, palette_name="viridis"):
         ruler += f'<rect x="{i*60}" y="{RULER_Y}" width="60" height="{RULER_HEIGHT}" style="fill:{RULER_COLORS[i%2]};stroke-width:0" />'
 
     # generate the palette of colors to be used for the schedule events
-    # I am using the actual number of states - maybe it would be better to use the number of known states?
     palette_data = viridis_data
-    palette_idx = gen_idx(len(palette_data), len(states))
+    palette_idx = gen_idx(len(palette_data), total_states or len(states))
     state_color = {}
     stroke_color = {}
     for idx, state in zip(palette_idx, sorted(states.keys())):
