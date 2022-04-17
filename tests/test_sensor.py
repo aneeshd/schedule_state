@@ -1,21 +1,17 @@
 """Tests the schedule_state sensor."""
-from datetime import timedelta, datetime, timezone, date
+from datetime import date, datetime, timedelta, timezone
+import logging
+from typing import Any
 from unittest.mock import patch
 
-import yaml
-
-from typing import Any
-
 from homeassistant import setup
-
+from homeassistant.components import input_boolean
 from homeassistant.components.sensor import DOMAIN as SENSOR
 from homeassistant.core import HomeAssistant
-from homeassistant.components import input_boolean
 from homeassistant.util import dt
+import yaml
 
 from custom_components.schedule_state.const import *
-
-import logging
 
 _LOGGER = logging.getLogger(__name__)
 
