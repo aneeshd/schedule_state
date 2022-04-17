@@ -26,6 +26,7 @@ import portion as P
 import voluptuous as vol
 
 from .const import *
+from .helpers.plot import draw_schedule_as_svg
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -241,6 +242,10 @@ class ScheduleSensor(SensorEntity):
         else:
             self._attr_icon = self.data.attributes.get("icon", None) or self._icon
 
+        self._attributes["schedule_image"] = self.data.attributes.get(
+            "schedule_image", None
+        )
+
     async def async_recalculate(self):
         """Recalculate schedule state."""
         _LOGGER.info(f"{self._name}: recalculate")
@@ -370,6 +375,7 @@ class ScheduleSensorData:
                 states[state] = states[state] | i
 
         _LOGGER.info(f"{self.name}:\n{pformat(states)}")
+        self.attributes["schedule_image"] = draw_schedule_as_svg(states)
         self.states = states
         self.refresh_time = dt.as_local(dt_now())
 
@@ -475,7 +481,11 @@ class ScheduleSensorData:
                 f"{self.name}: override = {o['start']} - {o['end']} == {o['state']} [expires {o['expires']}]"
             )
 
-        self.attributes = {}
+        attrs_to_clear = ["start", "end", "icon"]
+        for attr in attrs_to_clear:
+            if attr in self.attributes:
+                del self.attributes[attr]
+
         time_since_refresh = now - self.refresh_time
         if time_since_refresh.total_seconds() >= self.refresh.total_seconds() or (
             self.force_refresh is not None and now > self.force_refresh
