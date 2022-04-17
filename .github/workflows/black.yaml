@@ -3,10 +3,6 @@ name: Black
 on:
   pull_request:
   push:
-    branches:
-      - master
-      - main
-      - dev
 
 jobs:
   style:
