@@ -1,13 +1,14 @@
 """Constants for schedule_state integration"""
 
+from datetime import timedelta
+
 from homeassistant.const import (
+    ATTR_ENTITY_ID,
     CONF_CONDITION,
+    CONF_ICON,
     CONF_NAME,
     CONF_STATE,
-    ATTR_ENTITY_ID,
-    CONF_ICON,
 )
-from datetime import timedelta
 
 DOMAIN = "schedule_state"
 
