@@ -285,6 +285,9 @@ class ScheduleSensorData:
         """Process the list of events and derive the schedule for the day."""
         states = {}
 
+        # keep track of known states and report them in the attributes
+        self.known_states = set()
+
         # keep track of the states with errors and report them in the attributes
         self.error_states = set()
 

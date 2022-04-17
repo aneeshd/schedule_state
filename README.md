@@ -31,7 +31,7 @@ sensors to trigger other automations.
 
 ## Installation
 
-Using HACS:
+Using [HACS](https://hacs.xyz/):
 
 1. Go to the HACS integration page
 2. Click on "Explore & Download Repositories"
