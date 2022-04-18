@@ -242,9 +242,10 @@ class ScheduleSensor(SensorEntity):
         else:
             self._attr_icon = self.data.attributes.get("icon", None) or self._icon
 
-        self._attributes["schedule_image"] = self.data.attributes.get(
-            "schedule_image", None
-        )
+        (
+            self._attributes["schedule_image"],
+            self._attributes["schedule_svg"],
+        ) = self.data.attributes.get("schedule_image", (None, None))
 
     async def async_recalculate(self):
         """Recalculate schedule state."""
