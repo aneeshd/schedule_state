@@ -301,6 +301,17 @@ class ScheduleSensorData:
             if icon is not None:
                 self.icon_map[state] = icon
 
+            # Calculate new refresh time to be used if there was a problem evaluating the template or condition.
+            # This can happen if the things that the template is dependent on have not been started up by HA yet...
+            # or it could be a problem with the template/conditon definition, it doesn't seem possible to know which.
+            new_refresh_time = dt.as_local(dt_now()) + timedelta(
+                minutes=MINUTES_TO_REFRESH_ON_ERROR
+            )
+            if self.force_refresh is not None:
+                force_refresh = min(self.force_refresh, new_refresh_time)
+            else:
+                force_refresh = new_refresh_time
+
             variables = {}
             if cond is not None:
                 _LOGGER.debug(f"{self.name}: condition {cond}")
@@ -317,26 +328,19 @@ class ScheduleSensorData:
                     )
                     continue
                 elif cond_result is None:
+                    # There was a problem evaluating the condition - force a refresh
+                    self.force_refresh = force_refresh
                     self.error_states.add(state)
                     _LOGGER.error(
-                        f"{self.name}: {state}: error evaluating condition - skipping"
+                        f"{self.name}: {state}: error evaluating condition - skipping, will try again in {MINUTES_TO_REFRESH_ON_ERROR} minutes"
                     )
                     continue
 
             start = await self.get_start(event)
             end = await self.get_end(event)
             if None in (start, end):
-                # There was a problem evaluating the template.
-                # This can happen if the things that the template is dependent on have not been started up by HA yet...
-                # or it could be a problem with the template definition, it's doesn't seem possible to know which.
-                # Try to re-load it in a few minutes.
-                new_refresh_time = dt.as_local(dt_now()) + timedelta(
-                    minutes=MINUTES_TO_REFRESH_ON_ERROR
-                )
-                if self.force_refresh is not None:
-                    self.force_refresh = min(self.force_refresh, new_refresh_time)
-                else:
-                    self.force_refresh = new_refresh_time
+                # There was a problem evaluating the template - force a refresh
+                self.force_refresh = force_refresh
                 self.error_states.add(state)
                 _LOGGER.error(
                     f"{self.name}: {state}: error with event definition - skipping, will try again in {MINUTES_TO_REFRESH_ON_ERROR} minutes"
