@@ -18,6 +18,7 @@ pytest-homeassistant-custom-component = "==0.7.7"
 mypy = "*"
 holidays = "*"
 black = "*"
+flake8 = "*"
 
 [dev-packages]
 
@@ -26,3 +27,4 @@ python_version = "3.10"
 
 [scripts]
 test = "pytest --log-file ./pytest.log"
+isort = "isort -c ."
