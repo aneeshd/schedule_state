@@ -1,5 +1,4 @@
 {
   "name": "Schedule State",
-  "render_readme": true,
-  "iot_class": "calculated"
+  "render_readme": true
 }
