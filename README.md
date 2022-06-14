@@ -58,6 +58,7 @@ Create a `schedule_state` sensor:
     default_state: default              # this is the default
     icon: mdi:calendar-check            # this is the default
     error_icon: mdi:calendar-alert      # this is the default
+    minutes_to_refresh_on_error: 5      # this is the default
 ```
 
 By default, the sensor returns the name provided as the `default_state`. Configuration is built up in layers of events.
@@ -165,6 +166,17 @@ will re-evaluate the template again in a few minutes to guard against this condi
 Of course, it is possible that the template is not valid, but `schedule_state` cannot yet differentiate between these two scenarios.
 The icon of the `schedule_state` sensor will change to an "alert" (`mdi:calendar-alert`) to indicate that the template definition
 may need to be examined. In a future version, this force-refresh strategy may incorporate a timeout.
+
+Starting with [v0.14.0](https://github.com/aneeshd/schedule_state/releases/tag/0.14.0), `schedule_state` will ask Home Assistant to delay loading it until after the following integrations have been loaded:
+
+ - binary_sensor
+ - input_boolean
+ - input_button
+ - input_datetime
+ - input_number
+ - input_select
+ - input_text
+ - sun
 
 ## Services
 

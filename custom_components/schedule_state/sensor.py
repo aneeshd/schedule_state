@@ -50,6 +50,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Optional(CONF_REFRESH, default="6:00:00"): cv.time_period_str,
         vol.Optional(CONF_ICON, default="mdi:calendar-check"): cv.icon,
         vol.Optional(CONF_ERROR_ICON, default="mdi:calendar-alert"): cv.icon,
+        vol.Optional(CONF_MINUTES_TO_REFRESH_ON_ERROR, default=5): cv.positive_int,
     }
 )
 
@@ -76,11 +77,10 @@ CLEAR_OVERRIDES_SERVICE_SCHEMA = vol.Schema(
     }
 )
 
-MINUTES_TO_REFRESH_ON_ERROR = 5
-
 
 class Override(dict):
     def __init__(self, state, start, end, expires):
+        _LOGGER.info(f"New Override: {state} {start} {end} {expires}")
         self["state"] = state
         self["start"] = start
         self["end"] = end
@@ -100,7 +100,8 @@ async def async_setup_platform(
     events = config.get(CONF_EVENTS, [])
     name = config.get(CONF_NAME)
     refresh = config.get(CONF_REFRESH)
-    data = ScheduleSensorData(name, hass, events, refresh)
+    minutes_to_refresh_on_error = config.get(CONF_MINUTES_TO_REFRESH_ON_ERROR)
+    data = ScheduleSensorData(name, hass, events, refresh, minutes_to_refresh_on_error)
     await data.process_events()
 
     def get_target_devices(service):
@@ -264,13 +265,14 @@ class ScheduleSensor(SensorEntity):
 class ScheduleSensorData:
     """The class for handling the state computation."""
 
-    def __init__(self, name, hass, events, refresh):
+    def __init__(self, name, hass, events, refresh, minutes_to_refresh_on_error):
         """Initialize the data object."""
         self.name = name
         self.value = None
         self.hass = hass
         self.events = events
         self.refresh = refresh
+        self.minutes_to_refresh_on_error = minutes_to_refresh_on_error
         self.states = {}
         self.refresh_time = None
         self.overrides = []
@@ -305,7 +307,7 @@ class ScheduleSensorData:
             # This can happen if the things that the template is dependent on have not been started up by HA yet...
             # or it could be a problem with the template/conditon definition, it doesn't seem possible to know which.
             new_refresh_time = dt.as_local(dt_now()) + timedelta(
-                minutes=MINUTES_TO_REFRESH_ON_ERROR
+                minutes=self.minutes_to_refresh_on_error
             )
             if self.force_refresh is not None:
                 force_refresh = min(self.force_refresh, new_refresh_time)
@@ -332,7 +334,7 @@ class ScheduleSensorData:
                     self.force_refresh = force_refresh
                     self.error_states.add(state)
                     _LOGGER.error(
-                        f"{self.name}: {state}: error evaluating condition - skipping, will try again in {MINUTES_TO_REFRESH_ON_ERROR} minutes"
+                        f"{self.name}: {state}: error evaluating condition - skipping, will try again in {self.minutes_to_refresh_on_error} minutes"
                     )
                     continue
 
@@ -343,7 +345,7 @@ class ScheduleSensorData:
                 self.force_refresh = force_refresh
                 self.error_states.add(state)
                 _LOGGER.error(
-                    f"{self.name}: {state}: error with event definition - skipping, will try again in {MINUTES_TO_REFRESH_ON_ERROR} minutes"
+                    f"{self.name}: {state}: error with event definition - skipping, will try again in {self.minutes_to_refresh_on_error} minutes"
                 )
                 continue
 

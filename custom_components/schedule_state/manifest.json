@@ -1,4 +1,14 @@
 {
+  "after_dependencies": [
+    "input_boolean",
+    "input_button",
+    "input_datetime",
+    "input_number",
+    "input_select",
+    "input_text",
+    "binary_sensor",
+    "sun"
+  ],
   "codeowners": [
     "@aneeshd"
   ],
@@ -12,5 +22,5 @@
   "requirements": [
     "portion==2.2.0"
   ],
-  "version": "0.13.3"
+  "version": "0.14.0"
 }
