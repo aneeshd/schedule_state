@@ -228,9 +228,9 @@ This section provides some notes on each type of development environment, mostly
 
 ### pytest
 
- - Use the provided Pipfile to setup the development environment
- - `pipenv shell`
- - `pipenv install`
+ - Use the provided Pipfile (FIXME) to setup the development environment
+ - `## FIXME pipenv shell`
+ - `## FIXME pipenv install`
  - `python -m pytest tests/`
 
 Running pytest directly fails to find some of the installed dependencies, not sure why.
