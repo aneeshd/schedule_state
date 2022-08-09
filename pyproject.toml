@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "schedule_state"
+version = "0.14.0"
+description = ""
+authors = ["Aneesh Dalvi <2533133+aneeshd@users.noreply.github.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+portion = "==2.2.0"
+
+[tool.poetry.dev-dependencies]
+black = "^22.6.0"
+isort = "^5.10.1"
+flake8 = "^5.0.4"
+holidays = "^0.14.2"
+pytest = "^7.1.2"
+pytest-cov = "^3.0.0"
+homeassistant = "^2022.8.2"
+pytest-homeassistant-custom-component = "^0.11.7"
+mypy = "^0.971"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
