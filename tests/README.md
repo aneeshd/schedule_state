@@ -1,12 +1,10 @@
 # Getting Started
 
-To begin, it is recommended to use pipenv to manage dependencies:
-```bash
-pipenv shell
-```
+To begin, it is recommended to use [poetry](https://python-poetry.org/) to manage dependencies:
+`poetry shell`
 
 You can then install the dependencies that will allow you to run tests:
-`pipenv install`
+`poetry install`
 
 This will install `homeassistant`, `pytest`, and `pytest-homeassistant-custom-component`, a plugin which allows you to leverage helpers that are available in Home Assistant for core integration tests.
 

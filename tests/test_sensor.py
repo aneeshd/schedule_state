@@ -35,7 +35,7 @@ async def setup_test_entities(hass: HomeAssistant, config_dict: dict[str, Any]) 
         },
     )
     await hass.async_block_till_done()
-    assert ret
+    assert ret, "Setup failed"
 
 
 async def test_blank_setup(hass: HomeAssistant) -> None:
@@ -58,8 +58,8 @@ def basic_test(configfile: str, overrides: dict = {}, check_icon: bool = False):
                 config[0],
             )
 
-            assert p.called
-            assert p.return_value == now
+            assert p.called, "Time patch was not applied"
+            assert p.return_value == now, "Time patch was wrong"
 
         def check_override(phase, expected):
             if phase in overrides:
@@ -82,12 +82,14 @@ def basic_test(configfile: str, overrides: dict = {}, check_icon: bool = False):
                 p,
                 now,
             )
-            assert entity_state.attributes["friendly_name"] == sensorname
+            assert (
+                entity_state.attributes["friendly_name"] == sensorname
+            ), "Friendly name was wrong"
 
         now += timedelta(hours=16)  # 20:10
         await check_state_at_time(hass, sensor, now, "awake")
         if check_icon:
-            assert sensor._attr_icon == "mdi:run"
+            assert sensor._attr_icon == "mdi:run", "Icon is wrong"
 
         # add an override
         now += timedelta(minutes=10)  # 20:20
@@ -99,13 +101,13 @@ def basic_test(configfile: str, overrides: dict = {}, check_icon: bool = False):
         now += timedelta(minutes=10)  # 20:30
         await check_state_at_time(hass, sensor, now, "drowsy")
         if check_icon:
-            assert sensor._attr_icon == "mdi:cog"
+            assert sensor._attr_icon == "mdi:cog", "Icon was wrong"
 
         # check that override has expired
         now += timedelta(minutes=10)  # 20:40
         await check_state_at_time(hass, sensor, now, "awake")
         if check_icon:
-            assert sensor._attr_icon == "mdi:run"
+            assert sensor._attr_icon == "mdi:run", "Icon was wrong"
 
         # check that we have reverted back to normal schedule
         now += timedelta(hours=2)  # 22:40
@@ -113,7 +115,7 @@ def basic_test(configfile: str, overrides: dict = {}, check_icon: bool = False):
             hass, sensor, now, check_override("asleep2", "asleep")
         )
         if check_icon:
-            assert sensor._attr_icon == "mdi:sleep"
+            assert sensor._attr_icon == "mdi:sleep", "Icon was wrong"
 
     return fn
 
@@ -127,6 +129,8 @@ test_basic_setup_isoformat = basic_test("tests/test007.yaml")
 test_basic_setup_with_errors = basic_test(
     "tests/test008.yaml", overrides=dict(asleep1="default")
 )
+
+test_basic_setup_isoformat2 = basic_test("tests/test009.yaml")
 
 
 async def test_basic_setup_with_error(hass: HomeAssistant) -> None:
@@ -142,8 +146,8 @@ async def test_basic_setup_with_error(hass: HomeAssistant) -> None:
             config[0],
         )
 
-        assert p.called
-        assert p.return_value == now
+        assert p.called, "Time patch was not applied"
+        assert p.return_value == now, "Time patch was wrong"
 
     # get the "test005" sensor
     sensor = [e for e in hass.data["sensor"].entities][-1]
@@ -156,7 +160,9 @@ async def test_basic_setup_with_error(hass: HomeAssistant) -> None:
         await sensor.async_update_ha_state(force_refresh=True)
 
         entity_state = check_state(hass, "sensor.test005", "asleep", p, now)
-        assert entity_state.attributes["friendly_name"] == "test005"
+        assert (
+            entity_state.attributes["friendly_name"] == "test005"
+        ), "Friendly name was wrong"
 
     # awake state was not loaded - the default state should be seen
     now += timedelta(hours=16)  # 20:10
@@ -180,7 +186,7 @@ async def test_overrides(hass: HomeAssistant) -> None:
             config[0],
         )
 
-        assert p.called
+        assert p.called, "Time patch was not applied"
         assert p.return_value == now
 
     # get the "test000" sensor
@@ -218,6 +224,17 @@ async def test_overrides(hass: HomeAssistant) -> None:
     await recalculate(hass, "sensor.test000", now)
     now += timedelta(minutes=1)  # 20:34
     await check_state_at_time(hass, sensor, now, "awake")
+
+    now += timedelta(minutes=1)  # 20:35
+    await set_override(hass, "sensor.test000", now, "testing", end="22:15")
+    now += timedelta(hours=1)  # 21:35
+    await check_state_at_time(hass, sensor, now, "testing")
+    now += timedelta(hours=1)  # 22:35
+    await check_state_at_time(hass, sensor, now, "asleep")
+
+    await clear_overrides(hass, "sensor.test000", now)
+    now += timedelta(minutes=1)  # 22:36
+    await clear_overrides(hass, "sensor.test000", now)
 
 
 def schedule_modified_by_template(configfile: str):
@@ -355,7 +372,7 @@ async def test_schedule_using_condition(hass: HomeAssistant):
         await hass.async_block_till_done()
         await sensor.async_update_ha_state(force_refresh=True)
 
-        assert p.called
+        assert p.called, "Time patch was not applied"
 
         workday_sensor = [e for e in hass.data["binary_sensor"].entities][-1]
         _LOGGER.warn("workday sensor is %r", workday_sensor)
@@ -378,7 +395,7 @@ async def test_schedule_using_condition(hass: HomeAssistant):
         await hass.async_block_till_done()
         await workday_sensor.async_update_ha_state(force_refresh=True)
 
-        assert p.called
+        assert p.called, "Time patch was not applied"
 
         check_state(hass, workday, "off")
 
@@ -405,12 +422,14 @@ async def check_state_at_time(hass, sensor, now, value):
 def check_state(hass, name, value, p=None, now=None):
     _LOGGER.debug(f"check state of {name} - expect {value}")
     entity_state = hass.states.get(name)
-    assert entity_state
+    assert entity_state, f"Entity {name} does not exist"
     if p is not None:
-        assert p.called
+        assert p.called, "Time patch was not applied"
         if now is not None:
-            assert p.return_value == now
-    assert entity_state.state == value
+            assert p.return_value == now, "Time patch was wrong"
+    assert (
+        entity_state.state == value
+    ), f"State was wrong (actual={entity_state.state} vs expected={value})"
     return entity_state
 
 
@@ -438,7 +457,7 @@ async def set_override(
             },
         )
 
-        assert p.called
+        assert p.called, "Time patch was not applied"
         assert p.return_value == now
 
 
@@ -453,7 +472,7 @@ async def clear_overrides(hass, target, now):
             },
         )
 
-        assert p.called
+        assert p.called, "Time patch was not applied"
         assert p.return_value == now
 
 
@@ -468,9 +487,9 @@ async def recalculate(hass, target, now):
             },
         )
 
-        assert p.called
+        assert p.called, "Time patch was not applied"
         assert p.return_value == now
 
 
 def make_testtime(h: int, m: int):
-    return datetime(2021, 11, 20, h, m, tzinfo=test_tz)
+    return datetime(2021, 11, 20, h, m)

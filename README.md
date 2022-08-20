@@ -228,12 +228,11 @@ This section provides some notes on each type of development environment, mostly
 
 ### pytest
 
- - Use the provided Pipfile (FIXME) to setup the development environment
- - `## FIXME pipenv shell`
- - `## FIXME pipenv install`
- - `python -m pytest tests/`
+Use the [poetry](https://python-poetry.org/) and the provided `pyproject.toml` to setup the development environment
 
-Running pytest directly fails to find some of the installed dependencies, not sure why.
+ - `poetry shell`
+ - `poetry install`
+ - `pytest tests`
 
 ### devcontainer
 

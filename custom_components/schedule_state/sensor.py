@@ -31,19 +31,37 @@ _LOGGER = logging.getLogger(__name__)
 
 _CONDITION_SCHEMA = vol.All(cv.ensure_list, [cv.CONDITION_SCHEMA])
 
+
+def unique(*keys):
+    def fn(arg):
+        seen = []
+        for k in keys:
+            if k in arg:
+                seen.append(k)
+        if len(seen) > 1:
+            raise vol.Invalid(f"multiple conflicting keys provided: {seen}")
+        return arg
+
+    return fn
+
+
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {
         vol.Optional(CONF_EVENTS): [
-            {
-                vol.Optional(CONF_START): cv.time,
-                vol.Optional(CONF_START_TEMPLATE): cv.template,
-                vol.Optional(CONF_END): cv.time,
-                vol.Optional(CONF_END_TEMPLATE): cv.template,
-                vol.Required(CONF_STATE, default=DEFAULT_STATE): cv.string,
-                vol.Optional(CONF_COMMENT): cv.string,
-                vol.Optional(CONF_CONDITION): _CONDITION_SCHEMA,
-                vol.Optional(CONF_ICON): cv.icon,
-            }
+            vol.All(
+                {
+                    vol.Optional(CONF_START): cv.time,
+                    vol.Optional(CONF_START_TEMPLATE): cv.template,
+                    vol.Optional(CONF_END): cv.time,
+                    vol.Optional(CONF_END_TEMPLATE): cv.template,
+                    vol.Required(CONF_STATE, default=DEFAULT_STATE): cv.string,
+                    vol.Optional(CONF_COMMENT): cv.string,
+                    vol.Optional(CONF_CONDITION): _CONDITION_SCHEMA,
+                    vol.Optional(CONF_ICON): cv.icon,
+                },
+                unique("start", "start_template"),
+                unique("end", "end_template"),
+            )
         ],
         vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
         vol.Optional(CONF_DEFAULT_STATE, default=DEFAULT_STATE): cv.string,
@@ -249,7 +267,9 @@ class ScheduleSensor(SensorEntity):
 
     async def async_set_override(self, state: str, start, end, duration, icon):
         """Set override state."""
-        _LOGGER.info(f"{self._name}: override to {state} for {start} {end} {duration}")
+        _LOGGER.info(
+            f"{self._name}: override to {state} for s={start} e={end} d={duration}"
+        )
         if self.data.set_override(state, start, end, duration, icon):
             return await self.data.process_events()
         return False
@@ -394,11 +414,6 @@ class ScheduleSensorData:
             ret = default
 
         elif s is not None:
-            if st is not None:
-                # TODO fix schema so that this can't happen
-                _LOGGER.debug(
-                    f"{self.name}: ... ignoring {prefixt} since {prefix} was provided"
-                )
             ret = s
 
         else:
@@ -526,6 +541,9 @@ class ScheduleSensorData:
         elif start is None and end is not None and duration is not None:
             end = next_time(now, end)
             start = end - timedelta(minutes=duration)
+        elif start is None and end is not None and duration is None:
+            start = next_time(now, now)
+            end = next_time(now, end)
         elif start is not None and end is not None and duration is None:
             # don't try to fix wraparounds in this case, where both start and end times were provided
             start = next_time(now, start)
