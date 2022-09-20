@@ -9,6 +9,13 @@ import logging
 from pprint import pformat
 
 from homeassistant.components.sensor import PLATFORM_SCHEMA, SensorEntity
+from homeassistant.const import (
+    ATTR_ENTITY_ID,
+    CONF_CONDITION,
+    CONF_ICON,
+    CONF_NAME,
+    CONF_STATE,
+)
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import (
     ConditionError,
@@ -26,7 +33,23 @@ from homeassistant.util import dt
 import portion as P
 import voluptuous as vol
 
-from .const import *
+from .const import (
+    CONF_COMMENT,
+    CONF_DEFAULT_STATE,
+    CONF_DURATION,
+    CONF_END,
+    CONF_END_TEMPLATE,
+    CONF_ERROR_ICON,
+    CONF_EVENTS,
+    CONF_MINUTES_TO_REFRESH_ON_ERROR,
+    CONF_REFRESH,
+    CONF_START,
+    CONF_START_TEMPLATE,
+    DEFAULT_NAME,
+    DEFAULT_STATE,
+    DOMAIN,
+    PLATFORMS,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -487,7 +510,7 @@ class ScheduleSensorData:
             _LOGGER.debug(f"{self.name}: ...... found timestamp: {date}")
             tme = dt.as_local(date).time()
             return tme
-        except:
+        except:  # noqa: E722
             pass
 
         return None
@@ -544,15 +567,11 @@ class ScheduleSensorData:
 
         if start is None and end is None and duration is None:
             # 000
-            _LOGGER.error(
-                "override failed: must provide one of start/end/duration"
-            )
+            _LOGGER.error("override failed: must provide one of start/end/duration")
             return False
         elif start is not None and end is not None and duration is not None:
             # 111
-            _LOGGER.error(
-                "override failed: cannot provide start+end+duration together"
-            )
+            _LOGGER.error("override failed: cannot provide start+end+duration together")
             return False
         elif start is None and end is None and duration is not None:
             # 001 --> now to now+d

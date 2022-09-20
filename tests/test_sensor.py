@@ -7,11 +7,17 @@ from unittest.mock import patch
 from homeassistant import setup
 from homeassistant.components import input_boolean
 from homeassistant.components.sensor import DOMAIN as SENSOR
+from homeassistant.const import CONF_ICON, CONF_STATE
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt
 import yaml
 
-from custom_components.schedule_state.const import *
+from custom_components.schedule_state.const import (
+    CONF_DURATION,
+    CONF_END,
+    CONF_START,
+    DOMAIN,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -258,6 +264,7 @@ async def test_overrides(hass: HomeAssistant) -> None:
     await recalculate(hass, "sensor.test000", now)
     now += timedelta(minutes=2)  # 22:40
     await check_state_at_time(hass, sensor, now, "feisty")
+
 
 def schedule_modified_by_template(configfile: str):
     sensorname = configfile.replace("tests/", "").replace(".yaml", "")
