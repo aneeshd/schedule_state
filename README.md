@@ -210,7 +210,7 @@ Other data required for this service call:
 | Data            | Meaning |
 |-----------------|---------|
 | state           | The state to apply for this override |
-| icon            | Optionaly provide an icon for this state |
+| icon            | Optionally provide an icon for this state |
 
 ### `clear_overrides`
 

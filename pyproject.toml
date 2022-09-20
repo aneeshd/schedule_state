@@ -19,6 +19,7 @@ homeassistant = "^2022.9.5"
 pytest-homeassistant-custom-component = "^0.11.24"
 mypy = "^0.971"
 coverage = "^6.4.2"
+codespell = "^2.2.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

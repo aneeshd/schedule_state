@@ -355,7 +355,7 @@ class ScheduleSensorData:
 
             # Calculate new refresh time to be used if there was a problem evaluating the template or condition.
             # This can happen if the things that the template is dependent on have not been started up by HA yet...
-            # or it could be a problem with the template/conditon definition, it doesn't seem possible to know which.
+            # or it could be a problem with the template/condition definition, it doesn't seem possible to know which.
             new_refresh_time = dt.as_local(dt_now()) + timedelta(
                 minutes=self.minutes_to_refresh_on_error
             )
