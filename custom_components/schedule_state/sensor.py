@@ -522,8 +522,8 @@ class ScheduleSensorData:
                 # If the interval ends at midnight, peek ahead to the next day.
                 # This won't necessarily be right, because the schedule could be recalculated
                 # the next day, but it is arguably more useful.
-                _, next_i = self.find_interval(time.min)
-                if next_i is not None:
+                next_state, next_i = self.find_interval(time.min)
+                if next_state == state and next_i is not None:
                     self.attributes["end"] = next_i.upper
         else:
             _LOGGER.debug(f"{self.name}: using default state ({nu})")
