@@ -511,19 +511,32 @@ class ScheduleSensorData:
             await self.process_events()
             self.force_refresh = None
 
+        state, i = self.find_interval(nu)
+        if state is not None:
+            _LOGGER.debug(f"{self.name}: current state is {state} ({nu})")
+            self.attributes["start"] = i.lower
+            self.attributes["end"] = i.upper
+            self.value = state
+            self.attributes["icon"] = self.icon_map.get(state, None)
+            if i.upper == time.max:
+                # If the interval ends at midnight, peek ahead to the next day.
+                # This won't necessarily be right, because the schedule could be recalculated
+                # the next day, but it is arguably more useful.
+                _, next_i = self.find_interval(time.min)
+                if next_i is not None:
+                    self.attributes["end"] = next_i.upper
+        else:
+            _LOGGER.debug(f"{self.name}: using default state ({nu})")
+            self.value = None
+
+    def find_interval(self, nu):
         for state in self.states:
             if nu in self.states[state]:
-                _LOGGER.debug(f"{self.name}: current state is {state} ({nu})")
                 for i in self.states[state]._intervals:
                     if nu >= i.lower and nu < i.upper:
-                        self.attributes["start"] = i.lower
-                        self.attributes["end"] = i.upper
-                self.value = state
-                self.attributes["icon"] = self.icon_map.get(state, None)
-                return
+                        return state, i
 
-        _LOGGER.debug(f"{self.name}: using default state ({nu})")
-        self.value = None
+        return None, None
 
     def set_override(self, state, start, end, duration, icon):
         now = dt.as_local(dt_now())

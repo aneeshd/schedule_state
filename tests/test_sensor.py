@@ -42,7 +42,12 @@ async def test_blank_setup(hass: HomeAssistant) -> None:
     await setup_test_entities(hass, {"platform": DOMAIN})
 
 
-def basic_test(configfile: str, overrides: dict = {}, check_icon: bool = False):
+def basic_test(
+    configfile: str,
+    overrides: dict = {},
+    check_icon: bool = False,
+    check_midnight: bool = False,
+):
     sensorname = configfile.replace("tests/", "").replace(".yaml", "")
 
     async def fn(hass: HomeAssistant) -> None:
@@ -118,8 +123,13 @@ def basic_test(configfile: str, overrides: dict = {}, check_icon: bool = False):
         )
         if check_icon:
             assert sensor._attr_icon == "mdi:sleep", "Icon was wrong"
-        assert sensor._attributes["friendly_end"] == "midnight"
-        assert sensor._attributes["end"] == time.max
+
+        if check_midnight:
+            assert sensor._attributes["friendly_end"] == "midnight"
+            assert sensor._attributes["end"] == time.max
+        else:
+            # check that reported end time has wrapped
+            assert sensor._attributes["friendly_end"] == "05:30:00"
 
     return fn
 
@@ -131,7 +141,7 @@ test_basic_setup_timestamps = basic_test("tests/test006.yaml")
 test_basic_setup_isoformat = basic_test("tests/test007.yaml")
 
 test_basic_setup_with_errors = basic_test(
-    "tests/test008.yaml", overrides=dict(asleep1="default")
+    "tests/test008.yaml", overrides=dict(asleep1="default"), check_midnight=True
 )
 
 test_basic_setup_isoformat2 = basic_test("tests/test009.yaml")
