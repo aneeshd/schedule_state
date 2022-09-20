@@ -1,0 +1,17 @@
+name: codespell
+ 
+on:
+  pull_request:
+  push:
+
+jobs:
+  style:
+    runs-on: "ubuntu-latest"
+    name: Check spelling
+    steps:
+        - uses: "actions/checkout@v2"
+        - uses: "actions/setup-python@v1"
+          with:
+            python-version: "3.x"
+        - run: python3 -m pip install codespell
+        - run: codespell -L hass custom_components/schedule_state/*.py tests/*.py *.md custom_components/schedule_state/services.yaml `find .github -name "*.md"`
