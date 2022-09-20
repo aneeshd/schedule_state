@@ -6,7 +6,7 @@ authors = ["Aneesh Dalvi <2533133+aneeshd@users.noreply.github.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.10"
-portion = "==2.2.0"
+portion = "==2.3.0"
 
 [tool.poetry.dev-dependencies]
 black = "^22.6.0"
