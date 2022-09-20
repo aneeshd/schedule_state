@@ -218,9 +218,11 @@ async def test_overrides(hass: HomeAssistant) -> None:
 
     # add an invalid override
     await set_override(hass, "sensor.test000", now, "drowsy")
+    now += timedelta(minutes=1)  # 20:11
+    await check_state_at_time(hass, sensor, now, "awake")
 
     # add an override
-    now += timedelta(minutes=10)  # 20:20
+    now += timedelta(minutes=9)  # 20:20
     await set_override(hass, "sensor.test000", now, "drowsy", duration=15)
 
     # check that override state is en effect
@@ -250,6 +252,12 @@ async def test_overrides(hass: HomeAssistant) -> None:
     now += timedelta(minutes=1)  # 22:36
     await clear_overrides(hass, "sensor.test000", now)
 
+    # add an override that goes into the next day
+    await set_override(hass, "sensor.test000", now, "feisty", duration=120)
+    now += timedelta(minutes=2)  # 22:38
+    await recalculate(hass, "sensor.test000", now)
+    now += timedelta(minutes=2)  # 22:40
+    await check_state_at_time(hass, sensor, now, "feisty")
 
 def schedule_modified_by_template(configfile: str):
     sensorname = configfile.replace("tests/", "").replace(".yaml", "")

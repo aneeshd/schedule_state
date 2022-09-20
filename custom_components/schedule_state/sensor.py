@@ -99,7 +99,7 @@ CLEAR_OVERRIDES_SERVICE_SCHEMA = vol.Schema(
 
 class Override(dict):
     def __init__(self, state, start, end, expires):
-        _LOGGER.info(f"New Override: {state} {start} {end} {expires}")
+        _LOGGER.info(f"New Override: {state} s={start} e={end} expires={expires}")
         self["state"] = state
         self["start"] = start
         self["end"] = end
@@ -543,47 +543,61 @@ class ScheduleSensorData:
         allow_split = True
 
         if start is None and end is None and duration is None:
+            # 000
             _LOGGER.error(
-                "override failed: you have to provide one of start/end/duration"
+                "override failed: must provide one of start/end/duration"
             )
             return False
         elif start is not None and end is not None and duration is not None:
+            # 111
             _LOGGER.error(
-                "override failed: you cannot provide start+end+duration together"
+                "override failed: cannot provide start+end+duration together"
             )
             return False
-        elif start is None and end is None:
+        elif start is None and end is None and duration is not None:
+            # 001 --> now to now+d
             start = simple_time(now)
             end = start + timedelta(minutes=duration)
         elif start is not None and end is None and duration is not None:
+            # 101 --> start to start+d
             start = next_time(now, start)
             end = start + timedelta(minutes=duration)
         elif start is None and end is not None and duration is not None:
+            # 011 --> end-d to end
             end = next_time(now, end)
             start = end - timedelta(minutes=duration)
         elif start is None and end is not None and duration is None:
+            # 010 --> now to end
             start = next_time(now, now)
             end = next_time(now, end)
         elif start is not None and end is not None and duration is None:
+            # 110 --> start to end
             # don't try to fix wraparounds in this case, where both start and end times were provided
             start = next_time(now, start)
             end = next_time(now, end)
             allow_split = False
         else:
+            # 100 --> start to ???
             _LOGGER.error("override failed: no duration provided")
             return False
 
-        if start > end:
-            if allow_split:
-                # split into two overrides if there is a wraparound (eg: 23:55 to 00:10)
-                ev = Override(state, start.time(), time.max, start_of_next_day(now))
-                self.overrides.append(ev)
-                start = time.min
-            else:
-                _LOGGER.error(f"override failed: start ({start}) > end ({end})")
-                return False
+        start = start.time()
+        expires = end + timedelta(seconds=30)
+        end = end.time()
 
-        ev = Override(state, start.time(), end.time(), end + timedelta(seconds=30))
+        if not (start > end):
+            pass
+        elif start > end and allow_split:
+            # split into two overrides if there is a wraparound (eg: 23:55 to 00:10)
+            ev = Override(state, start, time.max, start_of_next_day(now))
+            _LOGGER.info(f"adding override: {ev} (split)")
+            self.overrides.append(ev)
+            start = time.min
+        else:
+            _LOGGER.error(f"override failed: start ({start}) > end ({end})")
+            return False
+
+        ev = Override(state, start, end, expires)
         self.overrides.append(ev)
         if icon is not None:
             self.icon_map[state] = icon
