@@ -228,7 +228,7 @@ This section provides some notes on each type of development environment, mostly
 
 ### pytest
 
-Use the [poetry](https://python-poetry.org/) and the provided `pyproject.toml` to setup the development environment
+Use [poetry](https://python-poetry.org/) and the provided `pyproject.toml` to setup the development environment
 
  - `poetry shell`
  - `poetry install`

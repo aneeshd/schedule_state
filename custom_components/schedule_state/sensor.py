@@ -4,6 +4,7 @@ A sensor that returns a string based on a defined schedule.
 import asyncio
 from datetime import datetime, time, timedelta
 import hashlib
+import locale
 import logging
 from pprint import pformat
 
@@ -254,6 +255,12 @@ class ScheduleSensor(SensorEntity):
         self._attributes["states"] = self.data.known_states
         self._attributes["start"] = self.data.attributes.get("start", None)
         self._attributes["end"] = self.data.attributes.get("end", None)
+        self._attributes["friendly_start"] = friendly_time(
+            self.data.attributes.get("start", None)
+        )
+        self._attributes["friendly_end"] = friendly_time(
+            self.data.attributes.get("end", None)
+        )
         self._attributes["errors"] = self.data.error_states
         if len(self.data.error_states):
             self._attr_icon = self._error_icon
@@ -509,8 +516,8 @@ class ScheduleSensorData:
                 _LOGGER.debug(f"{self.name}: current state is {state} ({nu})")
                 for i in self.states[state]._intervals:
                     if nu >= i.lower and nu < i.upper:
-                        self.attributes["start"] = i.lower.isoformat()
-                        self.attributes["end"] = i.upper.isoformat()
+                        self.attributes["start"] = i.lower
+                        self.attributes["end"] = i.upper
                 self.value = state
                 self.attributes["icon"] = self.icon_map.get(state, None)
                 return
@@ -617,6 +624,18 @@ def localtime_from_time(tme: time) -> time:
         date.tzinfo,
     )
     return dt.as_local(date).time()
+
+
+def friendly_time(t):
+    """Simple time formatting so that you don't have to do it in Lovelace everywhere.
+    For more advanced uses, you can use the start/end attributes instead of the friendly versions.
+    """
+    # TODO translations...
+    if t is None:
+        return "-"
+    elif t == time.max:
+        return "midnight"
+    return t.strftime(locale.nl_langinfo(locale.T_FMT))
 
 
 async def _async_process_if(hass, name, if_configs):

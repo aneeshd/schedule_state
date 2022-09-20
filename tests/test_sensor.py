@@ -1,5 +1,5 @@
 """Tests the schedule_state sensor."""
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta
 import logging
 from typing import Any
 from unittest.mock import patch
@@ -90,6 +90,8 @@ def basic_test(configfile: str, overrides: dict = {}, check_icon: bool = False):
         await check_state_at_time(hass, sensor, now, "awake")
         if check_icon:
             assert sensor._attr_icon == "mdi:run", "Icon is wrong"
+        assert sensor._attributes["friendly_start"] == "05:30:00"
+        assert sensor._attributes["friendly_end"] == "22:30:00"
 
         # add an override
         now += timedelta(minutes=10)  # 20:20
@@ -116,6 +118,8 @@ def basic_test(configfile: str, overrides: dict = {}, check_icon: bool = False):
         )
         if check_icon:
             assert sensor._attr_icon == "mdi:sleep", "Icon was wrong"
+        assert sensor._attributes["friendly_end"] == "midnight"
+        assert sensor._attributes["end"] == time.max
 
     return fn
 
