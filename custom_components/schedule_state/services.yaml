@@ -20,12 +20,14 @@ set_override:
       name: State
       description: State to set
       required: true
+      example: away
       selector:
         text:
     duration:
       name: Duration
       description: Duration for the temporary override
       required: false
+      example: 2
       selector:
         number:
           min: 1
@@ -47,6 +49,7 @@ set_override:
       name: Icon
       description: Icon to set
       required: false
+      example: mdi:calendar-star
       selector:
         text:
 
