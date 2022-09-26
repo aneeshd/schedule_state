@@ -7,14 +7,14 @@ recalculate:
   description: Recalculate Schedule State entities
   target:
     entity:
-      domain: sensor
+      integration: schedule_state
 
 set_override:
   name: Set Override
   description: Add a temporary override of a Schedule State entity
   target:
     entity:
-      domain: sensor
+      integration: schedule_state
   fields:
     state:
       name: State
@@ -43,10 +43,16 @@ set_override:
       required: false
       selector:
         time:
+    icon:
+      name: Icon
+      description: Icon to set
+      required: false
+      selector:
+        text:
 
 clear_overrides:
   name: Clear Overrides
   description: Clear all temporary overrides of a Schedule State entity
   target:
     entity:
-      domain: sensor
+      integration: schedule_state
