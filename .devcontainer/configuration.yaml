@@ -17,21 +17,6 @@ binary_sensor:
     country: CA
     province: "ON"
 
-sensor:
-  - platform: schedule_state
-    name: Sun tracker
-    events:
-      - state: night # try this instead of default_state
-      - start_template: "{{ states.sun.sun.attributes.next_dawn }}"
-        end_template: "{{ states.sun.sun.attributes.next_rising }}"
-        state: twilight
-      - start_template: "{{ (states.sun.sun.attributes.next_rising | as_timestamp) - 600 }}" # 10 minutes before sunrise
-        end_template: "{{ states.sun.sun.attributes.next_setting }}"
-        state: day
-      - start_template: "{{ states.sun.sun.attributes.next_setting }}"
-        end_template: "{{ states.sun.sun.attributes.next_dusk }}"
-        state: twilight
-
 sensor schedules: !include_dir_merge_list schedules/
 
 input_boolean:
@@ -39,3 +24,28 @@ input_boolean:
     name: Manual mode
   vacation_mode:
     name: Vacation mode
+
+input_datetime:
+  special_event_start:
+    "name": "Special Event Start"
+    "has_date": false
+    "icon": "mdi:calendar-start"
+    "has_time": true
+
+input_number:
+  special_event_duration:
+    "name": "Special Event Duration"
+    "min": 0.0
+    "max": 1440.0
+    "icon": "mdi:timeline-clock"
+    "step": 1.0
+    "mode": "slider"
+
+input_select:
+  special_event:
+    "name": "Special Event"
+    "icon": "mdi:calendar-star"
+    "options":
+      - "choring"
+      - "pitter-patter"
+      - "donny-brook"

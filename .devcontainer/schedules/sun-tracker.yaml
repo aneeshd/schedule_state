@@ -1,0 +1,13 @@
+  - platform: schedule_state
+    name: Sun tracker
+    events:
+      - state: night # try this instead of default_state
+      - start: "{{ states.sun.sun.attributes.next_dawn }}"
+        end: "{{ states.sun.sun.attributes.next_rising }}"
+        state: twilight
+      - start: "{{ (states.sun.sun.attributes.next_rising | as_timestamp) - 600 }}" # 10 minutes before sunrise
+        end: "{{ states.sun.sun.attributes.next_setting }}"
+        state: day
+      - start: "{{ states.sun.sun.attributes.next_setting }}"
+        end: "{{ states.sun.sun.attributes.next_dusk }}"
+        state: twilight

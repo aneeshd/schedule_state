@@ -1,21 +1,33 @@
   - platform: schedule_state
     name: Festive Lights State
+    # icon: "{{ iif(is_state('input_boolean.vacation_mode', 'on'), 'mdi:pine-tree', 'mdi:robot-dead', 'mdi:robot-dead') }}"
     icon: mdi:pine-tree
+    # default_state can be a template
+    default_state: "{{ iif(is_state('input_boolean.vacation_mode', 'on'), 'party', 'boring', 'boring') }}"
     events:
       - state: "off"
       - state: "on"
-        start_template: "{{ (states.sun.sun.attributes.next_rising | as_timestamp) - 1500 }}" # 25 minutes before sunrise
-        end_template: "{{ (states.sun.sun.attributes.next_rising | as_timestamp) + 7200 }}" # 2 hours sunrise
+        start: "{{ (states.sun.sun.attributes.next_rising | as_timestamp) - 1500 }}" # 25 minutes before sunrise
+        end: "{{ (states.sun.sun.attributes.next_rising | as_timestamp) + 7200 }}" # 2 hours sunrise
       - state: "on"
-        start_template: "{{ (states.sun.sun.attributes.next_setting | as_timestamp) - 1500 }}" # 25 minutes before sunset
+        start: "{{ (states.sun.sun.attributes.next_setting | as_timestamp) - 1500 }}" # 25 minutes before sunset
+
+      # state can be a template; start/start_template are now synonyms, as are end/end_template
+      - state: "{{ states('input_select.special_event') }}"
+        start: "{{ states('input_datetime.special_event_start') }}"
+        end: "{{ today_at(states('input_datetime.special_event_start')) + timedelta(minutes=states('input_number.special_event_duration')|int) }}"
+
+      # default_state from 22:00 to end of day
+      - start: "22:00"
+        comment: "used to check default_state template"
 
   - platform: schedule_state
     name: Outdoor Lights State
     events:
       - state: "on"
       - state: "off"
-        start_template: "{{ (states.sun.sun.attributes.next_rising | as_timestamp) + 1500 }}" # 25 minutes after sunrise
-        end_template: "{{ (states.sun.sun.attributes.next_setting | as_timestamp) - 1500 }}" # 25 minutes before sunset
+        start: "{{ (states.sun.sun.attributes.next_rising | as_timestamp) + 1500 }}" # 25 minutes after sunrise
+        end: "{{ (states.sun.sun.attributes.next_setting | as_timestamp) - 1500 }}" # 25 minutes before sunset
         condition:
           condition: state
           entity_id: input_boolean.vacation_mode
@@ -26,12 +38,12 @@
     events:
       - state: "off"
       - state: "on"
-        start_template: "{{ (states.sun.sun.attributes.next_setting | as_timestamp) - 1500 }}" # 25 minutes before sunset
+        start: "{{ (states.sun.sun.attributes.next_setting | as_timestamp) - 1500 }}" # 25 minutes before sunset
       - start: "0:00"
         end: "1:00"
         state: maybe-asleep
       - start: "1:00"
-        end_template: >
+        end: >
           {% if is_state("input_boolean.manual_mode", "off") %}
             2:00
           {% else %}

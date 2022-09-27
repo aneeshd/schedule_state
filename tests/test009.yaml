@@ -3,9 +3,9 @@
   refresh: "1:00:00"
   events:
     - state: "asleep"
-      end_template: "{{ '05:30+00:00' }}"
+      end: "{{ '05:30+00:00' }}"
     - state: "awake"
-      start_template: "{{ '05:30+00:00' }}"
-      end_template: "{{ '22:30+00:00' }}"
+      start: "{{ '05:30+00:00' }}"
+      end: "{{ '22:30+00:00' }}"
     - state: asleep
-      start_template: "{{ '22:30+00:00' }}"
+      start: "{{ '22:30+00:00' }}"

@@ -4,9 +4,9 @@
     events:
       - start: "0:00"
         state: nighttime
-        end_template: "{% if is_state('binary_sensor.workday_sensor', 'on') %} 6:30 {% else %} 8:30 {% endif %}"
-      - start_template: "{% if is_state('binary_sensor.workday_sensor', 'on') %} 6:30 {% else %} 8:30 {% endif %}"
-        end_template: "{% if is_state('binary_sensor.workday_sensor', 'on') %} 8:00 {% else %} 10:00 {% endif %}"
+        end: "{% if is_state('binary_sensor.workday_sensor', 'on') %} 6:30 {% else %} 8:30 {% endif %}"
+      - start: "{% if is_state('binary_sensor.workday_sensor', 'on') %} 6:30 {% else %} 8:30 {% endif %}"
+        end: "{% if is_state('binary_sensor.workday_sensor', 'on') %} 8:00 {% else %} 10:00 {% endif %}"
         state: daybreak
       - start: "08:00"
         end: "16:00"
@@ -30,9 +30,9 @@
           entity_id: binary_sensor.workday_sensor
           state: "off"
       - start: "17:00"
-        end_template: "{% if is_state('binary_sensor.workday_sensor', 'on') %} 21:30 {% else %} 22:30 {% endif %}"
+        end: "{% if is_state('binary_sensor.workday_sensor', 'on') %} 21:30 {% else %} 22:30 {% endif %}"
         state: evening
-      - start_template: "{% if is_state('binary_sensor.workday_sensor', 'on') %} 21:30 {% else %} 22:30 {% endif %}"
+      - start: "{% if is_state('binary_sensor.workday_sensor', 'on') %} 21:30 {% else %} 22:30 {% endif %}"
         end: "23:30"
         state: bedtime
       - start: "23:30"
