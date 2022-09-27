@@ -112,7 +112,7 @@ Any condition logic supported by Home Assistant can be used.
 This makes it easy to make different schedules for
 weekends or [holidays](https://www.home-assistant.io/integrations/workday/).
 
-```
+```yaml
       # weekends
       - start: "0:00"
         end: "8:00"
@@ -122,6 +122,19 @@ weekends or [holidays](https://www.home-assistant.io/integrations/workday/).
           weekday:
             - sat
             - sun
+```
+
+Keep in mind that the evaluation order of the events is top-to-bottom, and all of them are evaluated. This means 
+that if multiple events match the settings, it's the last one that "wins". For example, if you put this as your 
+_last_ event in your configuration, it can be used to override all the events above it, only by using a `binary_sensor`
+(note how there are no `start` and `end` parameters - matching all day if condition passes):
+
+```yaml
+      - state: away_mode
+        condition:
+          - condition: state
+            entity_id: binary_sensor.family_at_home
+            state: 'off' 
 ```
 
 Conditions are re-evaluated whenever the state of any entities referenced in the condition change.
