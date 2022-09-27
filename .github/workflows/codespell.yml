@@ -14,4 +14,4 @@ jobs:
           with:
             python-version: "3.x"
         - run: python3 -m pip install codespell
-        - run: codespell -L hass custom_components/schedule_state/*.py tests/*.py *.md custom_components/schedule_state/services.yaml `find .github -name "*.md"`
+        - run: codespell -L hass -L iif custom_components/schedule_state/*.py tests/*.py *.md custom_components/schedule_state/services.yaml `find .github -name "*.md"`
