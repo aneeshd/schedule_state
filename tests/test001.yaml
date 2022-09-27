@@ -3,6 +3,6 @@
   default_state: "off"
   events:
     - state: "on"
-      start_template: "{% if is_state('input_boolean.mode', 'off') %} 9:15 {% else %} 10:30 {% endif %}"
-      end_template: "{% if is_state('input_boolean.mode', 'off') %} 11:30 {% else %} 13:30 {% endif %}"
+      start: "{% if is_state('input_boolean.mode', 'off') %} 9:15 {% else %} 10:30 {% endif %}"
+      end: "{% if is_state('input_boolean.mode', 'off') %} 11:30 {% else %} 13:30 {% endif %}"
       comment: Time as hh:mm

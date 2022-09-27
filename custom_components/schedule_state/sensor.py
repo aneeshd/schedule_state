@@ -28,6 +28,7 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.reload import async_setup_reload_service
+from homeassistant.helpers.template import Template
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from homeassistant.util import dt
 import portion as P
@@ -47,6 +48,8 @@ from .const import (
     CONF_START_TEMPLATE,
     DEFAULT_NAME,
     DEFAULT_STATE,
+    DEFAULT_ICON,
+    DEFAULT_ERROR_ICON,
     DOMAIN,
     PLATFORMS,
 )
@@ -69,31 +72,40 @@ def unique(*keys):
     return fn
 
 
+# FIXME not sure how to accept templates for icons
+# IconSchema = vol.Any(
+#     vol.Coerce(cv.icon),
+#     cv.template,
+# )
+IconSchema = cv.icon
+
+TimeSchema = vol.Any(vol.Coerce(cv.time), cv.template)
+
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {
         vol.Optional(CONF_EVENTS): [
             vol.All(
                 {
-                    vol.Optional(CONF_START): cv.time,
-                    vol.Optional(CONF_START_TEMPLATE): cv.template,
-                    vol.Optional(CONF_END): cv.time,
-                    vol.Optional(CONF_END_TEMPLATE): cv.template,
-                    vol.Required(CONF_STATE, default=DEFAULT_STATE): cv.string,
+                    vol.Optional(CONF_START): TimeSchema,
+                    vol.Optional(CONF_START_TEMPLATE): TimeSchema,
+                    vol.Optional(CONF_END): TimeSchema,
+                    vol.Optional(CONF_END_TEMPLATE): TimeSchema,
+                    vol.Optional(CONF_STATE): vol.Any(cv.template, cv.string),
                     vol.Optional(CONF_COMMENT): cv.string,
                     vol.Optional(CONF_CONDITION): _CONDITION_SCHEMA,
-                    vol.Optional(CONF_ICON): cv.icon,
+                    vol.Optional(CONF_ICON): IconSchema,
                 },
-                unique("start", "start_template"),
-                unique("end", "end_template"),
+                unique(CONF_START, CONF_START_TEMPLATE),
+                unique(CONF_END, CONF_END_TEMPLATE),
             )
         ],
         vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
-        vol.Optional(CONF_DEFAULT_STATE, default=DEFAULT_STATE): cv.string,
+        vol.Optional(CONF_DEFAULT_STATE): vol.Any(cv.template, cv.string),
         vol.Optional(CONF_REFRESH, default="6:00:00"): cv.time_period_str,
-        vol.Optional(CONF_ICON, default="mdi:calendar-check"): cv.icon,
-        vol.Optional(CONF_ERROR_ICON, default="mdi:calendar-alert"): cv.icon,
+        vol.Optional(CONF_ICON): IconSchema,
+        vol.Optional(CONF_ERROR_ICON, default=DEFAULT_ERROR_ICON): IconSchema,
         vol.Optional(CONF_MINUTES_TO_REFRESH_ON_ERROR, default=5): cv.positive_int,
-    }
+    },
 )
 
 RECALCULATE_SERVICE_SCHEMA = vol.Schema(
@@ -139,11 +151,8 @@ async def async_setup_platform(
 
     await async_setup_reload_service(hass, DOMAIN, PLATFORMS)
 
-    events = config.get(CONF_EVENTS, [])
     name = config.get(CONF_NAME)
-    refresh = config.get(CONF_REFRESH)
-    minutes_to_refresh_on_error = config.get(CONF_MINUTES_TO_REFRESH_ON_ERROR)
-    data = ScheduleSensorData(name, hass, events, refresh, minutes_to_refresh_on_error)
+    data = ScheduleSensorData(name, hass, config)
     await data.process_events()
 
     def get_target_devices(service):
@@ -225,9 +234,6 @@ class ScheduleSensor(SensorEntity):
         self._attributes = {}
         self._name = name
         self._state = None
-        self._default_state = config.get(CONF_DEFAULT_STATE)
-        self._icon = config.get(CONF_ICON)
-        self._error_icon = config.get(CONF_ERROR_ICON)
 
         unique_id = hashlib.sha3_512(name.encode("utf-8")).hexdigest()
         self._attr_unique_id = unique_id
@@ -273,7 +279,7 @@ class ScheduleSensor(SensorEntity):
         value = self.data.value
 
         if value is None:
-            value = self._default_state
+            value = self.data.default_state
         self._state = value
         self._attributes["states"] = self.data.known_states
         self._attributes["start"] = self.data.attributes.get("start", None)
@@ -286,9 +292,11 @@ class ScheduleSensor(SensorEntity):
         )
         self._attributes["errors"] = self.data.error_states
         if len(self.data.error_states):
-            self._attr_icon = self._error_icon
+            self._attr_icon = self.data.error_icon
         else:
-            self._attr_icon = self.data.attributes.get("icon", None) or self._icon
+            self._attr_icon = (
+                self.data.attributes.get("icon", None) or self.data.default_icon
+            )
 
     async def async_recalculate(self):
         """Recalculate schedule state."""
@@ -315,14 +323,18 @@ class ScheduleSensor(SensorEntity):
 class ScheduleSensorData:
     """The class for handling the state computation."""
 
-    def __init__(self, name, hass, events, refresh, minutes_to_refresh_on_error):
+    def __init__(self, name, hass, config):
         """Initialize the data object."""
-        self.name = name
+        self.name = config.get(CONF_NAME)
         self.value = None
         self.hass = hass
-        self.events = events
-        self.refresh = refresh
-        self.minutes_to_refresh_on_error = minutes_to_refresh_on_error
+        self.events = config.get(CONF_EVENTS, [])
+        self.refresh = config.get(CONF_REFRESH)
+        self.minutes_to_refresh_on_error = config.get(CONF_MINUTES_TO_REFRESH_ON_ERROR)
+        self.default_state = None
+        self.default_icon = None
+        self.error_icon = None
+        self.config = config
         self.states = {}
         self.refresh_time = None
         self.overrides = []
@@ -343,13 +355,46 @@ class ScheduleSensorData:
         # keep track of the states with errors and report them in the attributes
         self.error_states = set()
 
+        self.default_icon = self.evaluate_template(
+            self.config,
+            CONF_ICON,
+            default=DEFAULT_ICON,
+        )
+
+        self.error_icon = self.evaluate_template(
+            self.config,
+            CONF_ERROR_ICON,
+            default=DEFAULT_ERROR_ICON,
+        )
+
+        self.default_state = self.evaluate_template(
+            self.config,
+            CONF_DEFAULT_STATE,
+            default=DEFAULT_STATE,
+        )
+        if self.default_state is None:
+            # error evaluating template - use the default
+            self.default_state = DEFAULT_STATE
+        self.known_states.add(self.default_state)
+
         for event in self.events + self.overrides:
             _LOGGER.debug(f"{self.name}: processing event {event}")
-            state = event.get(CONF_STATE, DEFAULT_STATE)
-            cond = event.get(CONF_CONDITION, None)
+            state = self.evaluate_template(
+                event,
+                CONF_STATE,
+                default=self.default_state,
+            )
+            if state is None:
+                # error evaluating template - skip this event
+                continue
             self.known_states.add(state)
 
-            icon = event.get(CONF_ICON, None)
+            cond = event.get(CONF_CONDITION, None)
+
+            icon = self.evaluate_template(
+                event,
+                CONF_ICON,
+            )
             if icon is not None:
                 self.icon_map[state] = icon
 
@@ -406,6 +451,11 @@ class ScheduleSensorData:
                 )
                 continue
 
+            elif state == end:
+                _LOGGER.warning(
+                    f"{self.name}: {state}: no duration - start and end:{start} - skipping"
+                )
+
             i = P.closedopen(start, end)
             for xstate in states:
                 if xstate == state:
@@ -430,20 +480,50 @@ class ScheduleSensorData:
         self.refresh_time = dt.as_local(dt_now())
 
     async def get_start(self, event):
-        return self.evaluate_template(event, CONF_START, CONF_START_TEMPLATE, time.min)
+        ret = self.evaluate_template(
+            event,
+            CONF_START,
+            CONF_START_TEMPLATE,
+            time.min,
+        )
+        ret2 = self.guess_value(ret)
+        ret = ret2
+
+        # if ret is None:
+        #     _LOGGER.error(f"{self.name}: FAILED - could not parse '{temp}'")
+        return ret
 
     async def get_end(self, event):
-        return self.evaluate_template(event, CONF_END, CONF_END_TEMPLATE, time.max)
+        ret = self.evaluate_template(
+            event,
+            CONF_END,
+            CONF_END_TEMPLATE,
+            time.max,
+        )
+        ret2 = self.guess_value(ret)
+        ret = ret2
 
-    def evaluate_template(self, event, prefix, prefixt, default):
-        s = event.get(prefix, None)
-        st = event.get(prefixt, None)
+        # if ret is None:
+        #     _LOGGER.error(f"{self.name}: FAILED - could not parse '{temp}'")
+        return ret
+
+    def evaluate_template(self, obj, prefix: str, prefixt: str = None, default=None):
+        _LOGGER.debug(
+            f"*** {prefix}={obj.get(prefix, None)} {prefixt}={obj.get(prefixt, None)}"
+        )
+        s = obj.get(prefix, None)
+        st = obj.get(prefixt, None)
+
+        s = s or st
+        st = s or st
 
         if s is None and st is None:
-            _LOGGER.debug(f"{self.name}: ... no {prefix} provided, using default")
+            _LOGGER.debug(
+                f"{self.name}: ... no {prefix} provided, using default ({default})"
+            )
             ret = default
 
-        elif s is not None:
+        elif not isinstance(s, Template):
             ret = s
 
         else:
@@ -461,17 +541,19 @@ class ScheduleSensorData:
             )
             for e in info.entities:
                 self.entities.add(e)
-            ret = self.guess_value(temp)
 
-            if ret is None:
-                _LOGGER.error(f"{self.name}: FAILED - could not parse '{temp}'")
+            ret = temp
 
-        _LOGGER.debug(f"{self.name}: ... >> {prefix} time: {ret}")
+        _LOGGER.debug(f"{self.name}: ... >> {prefix}: {ret}")
         return ret
 
     def guess_value(self, text):
         """After evaluating a template, try to figure out what the resulting value means.
         We are looking for a time value. Dates don't matter."""
+
+        if not isinstance(text, str):
+            return text
+
         try:
             date = dt.parse_datetime(text)
             if date is not None:

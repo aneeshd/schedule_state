@@ -132,9 +132,10 @@ This indicates that the condition definition may need to be examined.
 
 ## Templates
 
-Start and/or end times can be specified using [templates](https://www.home-assistant.io/docs/configuration/templating/).
+State values, start, and end times can be specified using [templates](https://www.home-assistant.io/docs/configuration/templating/).
+Simple use a template for any `state`, `default_state`, `start`, or `end` definition.
 
-Use the attributes `start_template`/`end_template` instead of `start`/`end`.
+In previous versions, it was necessary to use the attributes `start_template`/`end_template` instead of `start`/`end`.
 
 The template value must evaluate to one of these data types:
 
@@ -152,8 +153,8 @@ the [sun integration](https://www.home-assistant.io/integrations/sun/).
 ```
     events:
       - state: night
-      - start_template: "{{ as_timestamp(state_attr('sun.sun', 'next_rising')) }}"
-        end_template: "{{ as_timestamp(state_attr('sun.sun', 'next_setting')) }}"
+      - start: "{{ as_timestamp(state_attr('sun.sun', 'next_rising')) }}"
+        end: "{{ as_timestamp(state_attr('sun.sun', 'next_setting')) }}"
         state: day
 ```
 
@@ -177,6 +178,32 @@ Starting with [v0.14.0](https://github.com/aneeshd/schedule_state/releases/tag/0
  - input_select
  - input_text
  - sun
+
+
+## State and Attributes
+
+### `state`
+
+The `state` contains the current state of the schedule.
+
+### Attributes
+
+These custom attributes are available, in addition to the more common `friendly_name` and `icon` attributes.
+
+| Attribute        | Description                                                               |
+| :--------------- | ------------------------------------------------------------------------- |
+| `states`         | All states known to the sensor |
+| `start`          | Start time of current state |
+| `end`            | End time of current state |
+| `friendly_start` | Start time of current state as a string, formatted using your local conventions |
+| `friendly_end`   | End time of current state as a string, formatted using your local conventions |
+| `errors`         | List of any events with configuration errors |
+
+`start` and `end` return [`datetime.time`](https://docs.python.org/3/library/datetime.html#time-objects) objects,
+allowing templates to access `.hour`, `.minute`, and other attributes of the `time` object.
+
+`friendly_end` will return `'midnight'` if the event ends at the end of the day instead of the less useful 
+`'23:59:59.999999'` returned by `end` in earlier versions.
 
 ## Services
 

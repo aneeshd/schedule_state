@@ -4,9 +4,9 @@
   # The dates are irrelevant. Be careful picking random dates because apparently daylight savings time rules change...
   events:
     - state: "asleep"
-      end_template: "{{ as_timestamp('2027-04-13 05:30-07:00') }}"
+      end: "{{ as_timestamp('2027-04-13 05:30-07:00') }}"
     - state: "awake"
-      start_template: "{{ as_timestamp('2010-11-01 05:30-07:00') }}"
-      end_template: "{{ as_timestamp('2015-04-04 22:30-07:00') }}"
+      start: "{{ as_timestamp('2010-11-01 05:30-07:00') }}"
+      end: "{{ as_timestamp('2015-04-04 22:30-07:00') }}"
     - state: asleep
-      start_template: "{{ as_timestamp('2015-04-04 22:30-07:00') }}"
+      start: "{{ as_timestamp('2015-04-04 22:30-07:00') }}"
