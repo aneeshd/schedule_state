@@ -43,7 +43,7 @@ Using [HACS](https://hacs.xyz/):
 Configuration is done via YAML files. It seems safer to keep your custom
 configuration in a separate file, so add an entry in `configuration.yaml`:
 
-```
+```yaml
 sensor: !include sensors.yaml
 ```
 
@@ -51,7 +51,7 @@ Put configuration for `schedule_state`, and any other custom sensors, in `sensor
 
 Create a `schedule_state` sensor:
 
-```
+```yaml
   - platform: schedule_state
     name: Some descriptive name
     refresh: "6:00:00"                  # this is the default
@@ -74,7 +74,7 @@ As of [v0.13.1](https://github.com/aneeshd/schedule_state/releases/tag/0.13.1), 
 Pick any icon that you can find on [materialdesignicons.com](materialdesignicons.com) and prefix the name with `mdi:`.
 Note: the last icon assigned to a state is used for all occurrences of that state.
 
-```
+```yaml
     events:
       - start: "0:00"
         end: "5:30"
@@ -97,7 +97,7 @@ accommodate the new event.
 
 To continue the previous example:
 
-```
+```yaml
       - start: "13:30"
         end: "14:30"
         state: sleep
@@ -163,7 +163,7 @@ All times are converted to the local timezone.
 This is an example of a sensor that provides `day` or `night` states based on data from
 the [sun integration](https://www.home-assistant.io/integrations/sun/).
 
-```
+```yaml
     events:
       - state: night
       - start: "{{ as_timestamp(state_attr('sun.sun', 'next_rising')) }}"
@@ -286,7 +286,7 @@ Code changes require HA to be re-started, so try to get as much fixed as possibl
 
 Enable logging for `schedule_state`:
 
-```
+```yaml
 logger:
   default: warning
   logs:
