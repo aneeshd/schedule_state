@@ -1,0 +1,33 @@
+# based on suggestion from https://github.com/aneeshd/schedule_state/issues/45#issue-1385932513
+
+  - platform: schedule_state
+    name: "Fan coil heating schedule"
+    refresh: "6:00:00"
+    default_state: "temp_away"
+    extra_attributes:
+      fan_mode: "off"
+      swing_mode: "{{ iif(is_state('input_boolean.mode', 'on'), 'default-off', 'default-on', 'default-broken') }}"
+    icon: mdi:clock-check-outline
+    error_icon: mdi:clock-alert
+    minutes_to_refresh_on_error: 5
+    events:
+      - start: "0:00"
+        end: "5:30"
+        state: "temp_night"
+        fan_mode: "low"
+        swing_mode: "off"
+        icon: mdi:sleep
+      - start: "5:00" # intentional overlap
+        end: "22:30"
+        state: "temp_day"
+        fan_mode: "high"
+        # swing_mode: "off" # check that default works
+        icon: mdi:walk
+      - start: "22:30"
+        state: "temp_evening"
+        swing_mode: "{{ iif(is_state('input_boolean.mode', 'on'), 'vertical', 'wavy', 'broken') }}"
+        fan_mode: "{{ iif(is_state('input_boolean.mode', 'on'), 'mid', 'very-high', 'broken') }}"
+      - start: "23:19"
+        state: "temp_evening"
+        swing_mode: "horizontal"
+        fan_mode: "{{ iif(is_state('input_boolean.mode', 'on'), 'mid', 'very-high', 'broken') }}"
