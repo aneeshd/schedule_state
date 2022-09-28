@@ -245,11 +245,13 @@ Attributes are evaluated with the same top-to-bottom logic as states. If an attr
 provided for an event, the attribute value reverts to the default.
 
 _Tip:_ You can add Home Assistant-specific attributes too. For example if you schedule target temperature values, this will make it display a graph:
+
 ```yaml
     extra_attributes:
       unit_of_measurement: "°C"
       state_class: measurement
 ```
+
 ## Services
 
 ### `recalculate`
@@ -278,10 +280,11 @@ The override can be specified in four different ways:
 
 Other data required for this service call:
 
-| Data            | Meaning |
-|-----------------|---------|
-| state           | The state to apply for this override |
-| icon            | Optionally provide an icon for this state |
+| Data             | Meaning |
+|------------------|---------|
+| state            | The state to apply for this override |
+| icon             | Optionally provide an icon for this override |
+| extra_attributes | Optionally provide a `dict` of extra attributes for this override |
 
 ### `clear_overrides`
 
