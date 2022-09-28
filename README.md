@@ -70,7 +70,7 @@ This simple configuration will cause the sensor to report `sleep` or `awake` dep
 You can create automations that trigger on the sensor state. Or, you can use the value of the sensor state as a
 condition in your automations.
 
-As of [v0.13.1](https://github.com/aneeshd/schedule_state/releases/tag/0.13.1), each state can have a custom icon.
+Each state can have a custom icon.
 Pick any icon that you can find on [materialdesignicons.com](materialdesignicons.com) and prefix the name with `mdi:`.
 Note: the last icon assigned to a state is used for all occurrences of that state.
 
@@ -139,7 +139,7 @@ _last_ event in your configuration, it can be used to override all the events ab
 
 Conditions are re-evaluated whenever the state of any entities referenced in the condition change.
 
-As of [v0.13.1](https://github.com/aneeshd/schedule_state/releases/tag/0.13.1), the icon of the `schedule_state`
+The icon of the `schedule_state`
 sensor will change to an "alert" (`mdi:calendar-alert`) if an error is detected while evaluating the condition.
 This indicates that the condition definition may need to be examined.
 
@@ -174,14 +174,14 @@ the [sun integration](https://www.home-assistant.io/integrations/sun/).
 Template values are refreshed at every `refresh` interval, or whenever the state of any entities referenced in the template change.
 
 Sometimes, errors can occur when evaluating valid templates. This is because Home Assistant may not yet have loaded the entities on
-which the template depends. As of [v0.13.0](https://github.com/aneeshd/schedule_state/releases/tag/0.13.0), `schedule_state`
+which the template depends. `schedule_state`
 will re-evaluate the template again in a few minutes to guard against this condition. This gives HA some time to start everything up.
 
 Of course, it is possible that the template is not valid, but `schedule_state` cannot yet differentiate between these two scenarios.
 The icon of the `schedule_state` sensor will change to an "alert" (`mdi:calendar-alert`) to indicate that the template definition
 may need to be examined. In a future version, this force-refresh strategy may incorporate a timeout.
 
-Starting with [v0.14.0](https://github.com/aneeshd/schedule_state/releases/tag/0.14.0), `schedule_state` will ask Home Assistant to delay loading it until after the following integrations have been loaded:
+`schedule_state` will ask Home Assistant to delay loading it until after the following integrations have been loaded:
 
  - binary_sensor
  - input_boolean
@@ -218,6 +218,32 @@ allowing templates to access `.hour`, `.minute`, and other attributes of the `ti
 `friendly_end` will return `'midnight'` if the event ends at the end of the day instead of the less useful 
 `'23:59:59.999999'` returned by `end` in earlier versions.
 
+### Custom Attributes
+
+`schedule_state` can be configured to publish user-defined attributes with each event.
+
+```yaml
+  - platform: schedule_state
+    extra_attributes:
+      # attributes and their default values can be defined here - templates are allowed for values
+      fan_mode: "off"
+      swing_mode: "off"
+    events:
+      - start: "5:00" # intentional overlap
+        end: "22:30"
+        state: "temp_day"
+        fan_mode: "high"
+        # swing_mode will use default value ("off")
+      - start: "23:19"
+        state: "temp_evening"
+        # attribute values - templates are allowed for values
+        swing_mode: "horizontal"
+        fan_mode: "{{ iif(is_state('input_boolean.mode', 'on'), 'mid', 'very-high', 'broken') }}"
+```
+
+Attributes are evaluated with the same top-to-bottom logic as states. If an attribute is not
+provided for an event, the attribute value reverts to the default.
+
 ## Services
 
 ### `recalculate`
@@ -227,8 +253,7 @@ in the schedule definition, and you would like the schedule to be updated based 
 
 This is cleaner than re-loading, as it prevents the sensor from becoming "unavailable".
 
-Note: as of [v0.12.0](https://github.com/aneeshd/schedule_state/releases/tag/0.12.0),
-`schedule_state` will (should) automatically reload the schedule definition if any
+Note: `schedule_state` will (should) automatically reload the schedule definition if any
 referenced conditionals or templates have been updated. As a result, this service should
 not be needed if everything is working properly.
 

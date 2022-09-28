@@ -42,6 +42,7 @@ from .const import (
     CONF_END_TEMPLATE,
     CONF_ERROR_ICON,
     CONF_EVENTS,
+    CONF_EXTRA_ATTRIBUTES,
     CONF_MINUTES_TO_REFRESH_ON_ERROR,
     CONF_REFRESH,
     CONF_START,
@@ -81,6 +82,11 @@ IconSchema = cv.icon
 
 TimeSchema = vol.Any(vol.Coerce(cv.time), cv.template)
 
+
+def AnyData(x):
+    return x
+
+
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {
         vol.Optional(CONF_EVENTS): [
@@ -94,6 +100,8 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
                     vol.Optional(CONF_COMMENT): cv.string,
                     vol.Optional(CONF_CONDITION): _CONDITION_SCHEMA,
                     vol.Optional(CONF_ICON): IconSchema,
+                    # allow extra keys - for extra attributes
+                    vol.Optional(str): vol.Any(cv.template, AnyData),
                 },
                 unique(CONF_START, CONF_START_TEMPLATE),
                 unique(CONF_END, CONF_END_TEMPLATE),
@@ -105,6 +113,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Optional(CONF_ICON): IconSchema,
         vol.Optional(CONF_ERROR_ICON, default=DEFAULT_ERROR_ICON): IconSchema,
         vol.Optional(CONF_MINUTES_TO_REFRESH_ON_ERROR, default=5): cv.positive_int,
+        vol.Optional(CONF_EXTRA_ATTRIBUTES): {cv.string: vol.Any(cv.template, AnyData)},
     },
 )
 
@@ -298,6 +307,10 @@ class ScheduleSensor(SensorEntity):
                 self.data.attributes.get("icon", None) or self.data.default_icon
             )
 
+        # fetch extra attributes
+        for key in self.data.extra_attributes.keys():
+            self._attributes[key] = self.data.attributes.get(key, None)
+
     async def async_recalculate(self):
         """Recalculate schedule state."""
         _LOGGER.info(f"{self._name}: recalculate")
@@ -335,8 +348,8 @@ class ScheduleSensorData:
         self.default_icon = None
         self.error_icon = None
         self.config = config
-        self.states = {}
-        self.refresh_time = None
+        self._states = {}
+        self._refresh_time = None
         self.overrides = []
         self.known_states = set()
         self.error_states = set()
@@ -344,10 +357,11 @@ class ScheduleSensorData:
         self.entities = set()
         self.force_refresh = None
         self.icon_map = {}
+        self.extra_attributes = config.get(CONF_EXTRA_ATTRIBUTES, {})
+        self._custom_attributes = {}
 
     async def process_events(self):
         """Process the list of events and derive the schedule for the day."""
-        states = {}
 
         # keep track of known states and report them in the attributes
         self.known_states = set()
@@ -355,12 +369,14 @@ class ScheduleSensorData:
         # keep track of the states with errors and report them in the attributes
         self.error_states = set()
 
+        # FIXME templates not currently supported - see IconSchema above
         self.default_icon = self.evaluate_template(
             self.config,
             CONF_ICON,
             default=DEFAULT_ICON,
         )
 
+        # FIXME templates not currently supported
         self.error_icon = self.evaluate_template(
             self.config,
             CONF_ERROR_ICON,
@@ -377,6 +393,11 @@ class ScheduleSensorData:
             self.default_state = DEFAULT_STATE
         self.known_states.add(self.default_state)
 
+        # TODO we should handle 'icon' the same as other extra attributes
+        self._attr_keys = [k for k in self.extra_attributes.keys()]
+        states = {}
+        attrs = {k: dict() for k in self._attr_keys}
+
         for event in self.events + self.overrides:
             _LOGGER.debug(f"{self.name}: processing event {event}")
             state = self.evaluate_template(
@@ -390,13 +411,6 @@ class ScheduleSensorData:
             self.known_states.add(state)
 
             cond = event.get(CONF_CONDITION, None)
-
-            icon = self.evaluate_template(
-                event,
-                CONF_ICON,
-            )
-            if icon is not None:
-                self.icon_map[state] = icon
 
             # Calculate new refresh time to be used if there was a problem evaluating the template or condition.
             # This can happen if the things that the template is dependent on have not been started up by HA yet...
@@ -455,29 +469,54 @@ class ScheduleSensorData:
                 _LOGGER.warning(
                     f"{self.name}: {state}: no duration - start and end:{start} - skipping"
                 )
+                continue
 
-            i = P.closedopen(start, end)
-            for xstate in states:
-                if xstate == state:
-                    continue
-                overlap = i & states[xstate]
-                if i.overlaps(states[xstate]):
-                    _LOGGER.debug(
-                        f"{self.name}: {state} overlaps with existing {xstate}: {overlap}"
+            icon = self.evaluate_template(
+                event,
+                CONF_ICON,
+            )
+            if icon is not None:
+                self.icon_map[state] = icon
+
+            # Layer on the new interval to the schedule
+            interval = P.closedopen(start, end)
+
+            # process custom attributes
+            self.handle_layers(states, state, interval)
+            for xattr in self._attr_keys:
+                attr_val = event.get(xattr, None)
+                if attr_val is not None:
+                    self.handle_layers(
+                        attrs[xattr],
+                        attr_val,
+                        interval,
                     )
-                    states[xstate] -= overlap
-                    _LOGGER.debug(
-                        f"{self.name}: ... reducing {xstate} to {states[xstate]}"
-                    )
 
-            if state not in states:
-                states[state] = i
-            else:
-                states[state] = states[state] | i
+        _LOGGER.info(f"{self.name}(alt):\n{pformat(states)}\n{pformat(attrs)}")
+        self._states = states
+        self._custom_attributes = attrs
+        self._refresh_time = dt.as_local(dt_now())
 
-        _LOGGER.info(f"{self.name}:\n{pformat(states)}")
-        self.states = states
-        self.refresh_time = dt.as_local(dt_now())
+    def handle_layers(self, states, this_attr, interval, event=None):
+        for attr in states:
+            self.handle_layer(states, attr, this_attr, interval, event)
+
+        if this_attr not in states:
+            states[this_attr] = interval
+        else:
+            states[this_attr] = states[this_attr] | interval
+
+    def handle_layer(self, states, attr, this_attr, interval, event):
+        if attr == this_attr:
+            return
+
+        overlap = interval & states[attr]
+        if interval.overlaps(states[attr]):
+            _LOGGER.debug(
+                f"{self.name}: {this_attr} overlaps with existing {attr}: {overlap}"
+            )
+            states[attr] -= overlap
+            _LOGGER.debug(f"{self.name}: ... reducing {attr} to {states[attr]}")
 
     async def get_start(self, event):
         ret = self.evaluate_template(
@@ -489,8 +528,8 @@ class ScheduleSensorData:
         ret2 = self.guess_value(ret)
         ret = ret2
 
-        # if ret is None:
-        #     _LOGGER.error(f"{self.name}: FAILED - could not parse '{temp}'")
+        if ret2 is None:
+            _LOGGER.error(f"{self.name}: FAILED - could not parse '{ret}'")
         return ret
 
     async def get_end(self, event):
@@ -503,24 +542,28 @@ class ScheduleSensorData:
         ret2 = self.guess_value(ret)
         ret = ret2
 
-        # if ret is None:
-        #     _LOGGER.error(f"{self.name}: FAILED - could not parse '{temp}'")
+        if ret2 is None:
+            _LOGGER.error(f"{self.name}: FAILED - could not parse '{ret}'")
         return ret
 
-    def evaluate_template(self, obj, prefix: str, prefixt: str = None, default=None):
-        _LOGGER.debug(
-            f"*** {prefix}={obj.get(prefix, None)} {prefixt}={obj.get(prefixt, None)}"
-        )
+    def evaluate_template(
+        self,
+        obj,
+        prefix: str,
+        prefixt: str = None,
+        default=None,
+        track_entities: bool = True,
+    ):
         s = obj.get(prefix, None)
         st = obj.get(prefixt, None)
 
         s = s or st
         st = s or st
 
+        debugmsg = ""
+
         if s is None and st is None:
-            _LOGGER.debug(
-                f"{self.name}: ... no {prefix} provided, using default ({default})"
-            )
+            debugmsg = "(default)"
             ret = default
 
         elif not isinstance(s, Template):
@@ -539,12 +582,13 @@ class ScheduleSensorData:
             _LOGGER.debug(
                 f"{self.name}: ... {prefixt} text: {temp} -- entities used: {info.entities}"
             )
-            for e in info.entities:
-                self.entities.add(e)
+            if track_entities:
+                for e in info.entities:
+                    self.entities.add(e)
 
             ret = temp
 
-        _LOGGER.debug(f"{self.name}: ... >> {prefix}: {ret}")
+        _LOGGER.debug(f"{self.name}: ... >> {prefix}: {ret} {debugmsg}")
         return ret
 
     def guess_value(self, text):
@@ -609,37 +653,68 @@ class ScheduleSensorData:
             )
 
         self.attributes = {}
-        time_since_refresh = now - self.refresh_time
+        time_since_refresh = now - self._refresh_time
         if time_since_refresh.total_seconds() >= self.refresh.total_seconds() or (
             self.force_refresh is not None and now > self.force_refresh
         ):
             await self.process_events()
             self.force_refresh = None
 
-        state, i = self.find_interval(nu)
+        state, interval = self.find_interval(self._states, nu)
         if state is not None:
             _LOGGER.debug(f"{self.name}: current state is {state} ({nu})")
-            self.attributes["start"] = i.lower
-            self.attributes["end"] = i.upper
+            self.attributes["start"] = interval.lower
+            self.attributes["end"] = interval.upper
             self.value = state
             self.attributes["icon"] = self.icon_map.get(state, None)
-            if i.upper == time.max:
+
+            if interval.upper == time.max:
                 # If the interval ends at midnight, peek ahead to the next day.
                 # This won't necessarily be right, because the schedule could be recalculated
                 # the next day, but it is arguably more useful.
-                next_state, next_i = self.find_interval(time.min)
+                next_state, next_i = self.find_interval(self._states, time.min)
                 if next_state == state and next_i is not None:
                     self.attributes["end"] = next_i.upper
         else:
             _LOGGER.debug(f"{self.name}: using default state ({nu})")
             self.value = None
 
-    def find_interval(self, nu):
-        for state in self.states:
-            if nu in self.states[state]:
-                for i in self.states[state]._intervals:
-                    if nu >= i.lower and nu < i.upper:
-                        return state, i
+        # process extra attributes
+        for attr in self._attr_keys:
+            # get the default value
+            dv = self.extra_attributes[attr]
+            default_val = self.evaluate_template(
+                {attr: dv},
+                attr,
+                track_entities=False,
+                default=dv,
+            )
+            _LOGGER.error(f"{state} default: {type(dv)} {dv} {default_val}")
+
+            # find an event in which the attribute is defined
+            attr_val, _ = self.find_interval(self._custom_attributes[attr], nu)
+            if attr_val is not None:
+                # figure out the attribute value
+                val = self.evaluate_template(
+                    {attr: attr_val},
+                    attr,
+                    track_entities=False,
+                    default=default_val,
+                )
+                self.attributes[attr] = val
+            else:
+                # no value specified - revert to the default
+                self.attributes[attr] = default_val
+
+    def find_interval(self, states, nu):
+        for state in states:
+            if nu in states[state]:
+                for interval in states[state]._intervals:
+                    if nu >= interval.lower and nu < interval.upper:
+                        return (
+                            state,
+                            interval,
+                        )
 
         return None, None
 

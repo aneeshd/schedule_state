@@ -58,11 +58,11 @@ def basic_test(
 
     async def fn(hass: HomeAssistant) -> None:
         """Test basic schedule_state setup."""
-        now = make_testtime(4, 0)
 
         with open(configfile, "r") as f:
             config = yaml.safe_load(f)
 
+        now = make_testtime(4, 0)
         with patch(TIME_FUNCTION_PATH, return_value=now) as p:
             await setup_test_entities(
                 hass,
@@ -441,11 +441,136 @@ async def test_schedule_using_condition(hass: HomeAssistant):
         await check_state_at_time(hass, sensor, now, "evening")
 
 
+async def test_extra_attributes(hass: HomeAssistant):
+    configfile = "tests/../.devcontainer/schedules/fan-coil.yaml"
+    sensorname = "fan_coil_heating_schedule"
+
+    # switch used to toggle template values
+    mode_switch = "input_boolean.mode"
+    assert await setup.async_setup_component(
+        hass, input_boolean.DOMAIN, {"input_boolean": {"mode": None}}
+    )
+
+    with open(configfile, "r") as f:
+        config = yaml.safe_load(f)
+
+    now = make_testtime(4, 0)
+    with patch(TIME_FUNCTION_PATH, return_value=now) as p:
+        await setup_test_entities(
+            hass,
+            config[0],
+        )
+
+        assert p.called, "Time patch was not applied"
+        assert p.return_value == now, "Time patch was wrong"
+
+        sensor = [e for e in hass.data["sensor"].entities][-1]
+        check_state(hass, f"sensor.{sensorname}", "temp_night", p, now)
+
+        assert len(sensor._attributes["errors"]) == 0
+        assert sensor._attributes["fan_mode"] == "low"
+
+    hass.states.async_set(mode_switch, "on")
+    await hass.async_block_till_done()
+
+    now += timedelta(minutes=10)  # 4:10
+    with patch(TIME_FUNCTION_PATH, return_value=now) as p:
+        await sensor.async_update_ha_state(force_refresh=True)
+
+        entity_state = check_state(
+            hass,
+            f"sensor.{sensorname}",
+            "temp_night",
+            p,
+            now,
+        )
+        assert (
+            entity_state.attributes["friendly_name"] == "Fan coil heating schedule"
+        ), "Friendly name was wrong"
+
+        assert entity_state.attributes["swing_mode"] == "off"
+        assert entity_state.attributes["fan_mode"] == "low"
+
+    now += timedelta(hours=9)  # 13:10
+    with patch(TIME_FUNCTION_PATH, return_value=now) as p:
+        await sensor.async_update_ha_state(force_refresh=True)
+
+        entity_state = check_state(
+            hass,
+            f"sensor.{sensorname}",
+            "temp_day",
+            p,
+            now,
+        )
+
+        assert entity_state.attributes["swing_mode"] == "default-off"
+        assert entity_state.attributes["fan_mode"] == "high"
+
+    # flick the switch off - check that default value changes
+    hass.states.async_set(mode_switch, "off")
+    await hass.async_block_till_done()
+
+    now += timedelta(minutes=1)  # 13:11
+    with patch(TIME_FUNCTION_PATH, return_value=now) as p:
+        await sensor.async_update_ha_state(force_refresh=True)
+        assert entity_state.attributes["swing_mode"] == "default-off"
+    now -= timedelta(minutes=1)  # 13:10
+
+    # switch is on again
+    hass.states.async_set(mode_switch, "on")
+    await hass.async_block_till_done()
+
+    now += timedelta(hours=10)  # 23:10
+    with patch(TIME_FUNCTION_PATH, return_value=now) as p:
+        await sensor.async_update_ha_state(force_refresh=True)
+
+        entity_state = check_state(
+            hass,
+            f"sensor.{sensorname}",
+            "temp_evening",
+            p,
+            now,
+        )
+
+        assert entity_state.attributes["swing_mode"] == "vertical"
+        assert entity_state.attributes["fan_mode"] == "mid"
+
+    # flick the switch off
+    hass.states.async_set(mode_switch, "off")
+    await hass.async_block_till_done()
+
+    now += timedelta(minutes=5)  # 23:15
+    with patch(TIME_FUNCTION_PATH, return_value=now) as p:
+        await sensor.async_update_ha_state(force_refresh=True)
+
+        entity_state = check_state(
+            hass,
+            f"sensor.{sensorname}",
+            "temp_evening",
+            p,
+            now,
+        )
+
+        assert entity_state.attributes["swing_mode"] == "wavy"
+        assert entity_state.attributes["fan_mode"] == "very-high"
+
+    # flick the switch back on
+    hass.states.async_set(mode_switch, "on")
+    await hass.async_block_till_done()
+
+    now += timedelta(minutes=5)  # 23:20
+    with patch(TIME_FUNCTION_PATH, return_value=now) as p:
+        await sensor.async_update_ha_state(force_refresh=True)
+
+        assert sensor._attributes["swing_mode"] == "horizontal"
+        assert sensor._attributes["fan_mode"] == "mid"
+
+
 async def check_state_at_time(hass, sensor, now, value):
     _LOGGER.info(f"check_state_at_time {now} for {sensor.entity_id} - expect {value}")
     with patch(TIME_FUNCTION_PATH, return_value=now) as p:
         await sensor.async_update_ha_state(force_refresh=True)
-        check_state(hass, sensor.entity_id, value, p, now)
+        return check_state(hass, sensor.entity_id, value, p, now)
 
 
 def check_state(hass, name, value, p=None, now=None):
