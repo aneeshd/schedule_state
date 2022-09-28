@@ -131,6 +131,7 @@ OVERRIDE_SERVICE_SCHEMA = vol.Schema(
         vol.Optional(CONF_START): cv.time,
         vol.Optional(CONF_END): cv.time,
         vol.Optional(CONF_ICON): cv.icon,
+        vol.Optional(CONF_EXTRA_ATTRIBUTES): {cv.string: AnyData},
     }
 )
 
@@ -142,12 +143,15 @@ CLEAR_OVERRIDES_SERVICE_SCHEMA = vol.Schema(
 
 
 class Override(dict):
-    def __init__(self, state, start, end, expires):
-        _LOGGER.info(f"New Override: {state} s={start} e={end} expires={expires}")
+    def __init__(self, state, start, end, expires, icon, extra_attributes):
+        # _LOGGER.info(f"New Override: {state} s={start} e={end} expires={expires}")
         self["state"] = state
         self["start"] = start
         self["end"] = end
         self["expires"] = expires
+        self["icon"] = icon
+        for attr in extra_attributes:
+            self[attr] = extra_attributes[attr]
 
 
 async def async_setup_platform(
@@ -196,6 +200,7 @@ async def async_setup_platform(
                 service.data.get(CONF_END, None),
                 service.data.get(CONF_DURATION, None),
                 service.data.get(CONF_ICON, None),
+                service.data.get(CONF_EXTRA_ATTRIBUTES, None),
             )
             update_tasks.append(target_device.async_update_ha_state(True))
 
@@ -316,12 +321,14 @@ class ScheduleSensor(SensorEntity):
         _LOGGER.info(f"{self._name}: recalculate")
         await self.data.process_events()
 
-    async def async_set_override(self, state: str, start, end, duration, icon):
+    async def async_set_override(
+        self, state: str, start, end, duration, icon, extra_attributes
+    ):
         """Set override state."""
         _LOGGER.info(
-            f"{self._name}: override to {state} for s={start} e={end} d={duration}"
+            f"{self._name}: override to {state} for s={start} e={end} d={duration} ea={extra_attributes}"
         )
-        if self.data.set_override(state, start, end, duration, icon):
+        if self.data.set_override(state, start, end, duration, icon, extra_attributes):
             return await self.data.process_events()
         return False
 
@@ -429,7 +436,8 @@ class ScheduleSensorData:
                 cond_func = await _async_process_if(self.hass, self.name, cond)
                 for conf in cond_func.config:
                     referenced = condition.async_extract_entities(conf)
-                    _LOGGER.debug(f"... entities used: {referenced}")
+                    if len(referenced):
+                        _LOGGER.debug(f"{self.name}: ... entities used: {referenced}")
                     self.entities.update(referenced)
 
                 cond_result = cond_func(variables)
@@ -458,14 +466,14 @@ class ScheduleSensorData:
                 )
                 continue
 
-            if start > end:
+            elif start > end:
                 self.error_states.add(state)
                 _LOGGER.error(
                     f"{self.name}: {state}: error with event definition - start:{start} > end:{end} - skipping"
                 )
                 continue
 
-            elif state == end:
+            elif start == end:
                 _LOGGER.warning(
                     f"{self.name}: {state}: no duration - start and end:{start} - skipping"
                 )
@@ -567,6 +575,7 @@ class ScheduleSensorData:
             ret = default
 
         elif not isinstance(s, Template):
+            debugmsg = "(value)"
             ret = s
 
         else:
@@ -579,16 +588,15 @@ class ScheduleSensorData:
                 _LOGGER.error(f"{self.name}: ... failed to evaluate {prefixt}: {e}")
                 return None
 
-            _LOGGER.debug(
-                f"{self.name}: ... {prefixt} text: {temp} -- entities used: {info.entities}"
-            )
             if track_entities:
+                if len(info.entities):
+                    debugmsg += f" -- entities used: {info.entities}"
                 for e in info.entities:
                     self.entities.add(e)
 
             ret = temp
 
-        _LOGGER.debug(f"{self.name}: ... >> {prefix}: {ret} {debugmsg}")
+        _LOGGER.debug(f"{self.name}: >> {prefix}: {ret} {debugmsg}")
         return ret
 
     def guess_value(self, text):
@@ -717,7 +725,7 @@ class ScheduleSensorData:
 
         return None, None
 
-    def set_override(self, state, start, end, duration, icon):
+    def set_override(self, state, start, end, duration, icon, extra_attributes):
         now = dt.as_local(dt_now())
         allow_split = True
 
@@ -760,11 +768,30 @@ class ScheduleSensorData:
         expires = end + timedelta(seconds=30)
         end = end.time()
 
+        # filter extra_attributes passed in by the service call and issue warnings for unknown attributes
+        if extra_attributes is not None:
+            ex_attrs = {}
+            for attr in self._attr_keys:
+                v = extra_attributes.get(attr, None)
+                if v is not None:
+                    ex_attrs[attr] = v
+
+                for attr in extra_attributes.keys():
+                    if attr not in self._attr_keys:
+                        _LOGGER.error(
+                            f"{self.name}: ignoring unknown attribute '{attr}' in service call"
+                        )
+                extra_attributes = ex_attrs
+        else:
+            extra_attributes = {}
+
         if not (start > end):
             pass
         elif start > end and allow_split:
             # split into two overrides if there is a wraparound (eg: 23:55 to 00:10)
-            ev = Override(state, start, time.max, start_of_next_day(now))
+            ev = Override(
+                state, start, time.max, start_of_next_day(now), icon, extra_attributes
+            )
             _LOGGER.info(f"adding override: {ev} (split)")
             self.overrides.append(ev)
             start = time.min
@@ -772,10 +799,8 @@ class ScheduleSensorData:
             _LOGGER.error(f"override failed: start ({start}) > end ({end})")
             return False
 
-        ev = Override(state, start, end, expires)
+        ev = Override(state, start, end, expires, icon, extra_attributes)
         self.overrides.append(ev)
-        if icon is not None:
-            self.icon_map[state] = icon
         return True
 
     def clear_overrides(self):

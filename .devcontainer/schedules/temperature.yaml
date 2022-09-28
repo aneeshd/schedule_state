@@ -1,0 +1,13 @@
+
+  - platform: schedule_state
+    name: "Temperature schedule"
+    # extended attributes can be used to set sensor properties
+    # see https://developers.home-assistant.io/docs/core/entity/sensor#properties
+    extra_attributes:
+      unit_of_measurement: "°C"
+      state_class: measurement
+    events:
+      - end: "12:00"
+        state: 18.0
+      - start: "12:00"
+        state: 22.0

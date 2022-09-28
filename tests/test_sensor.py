@@ -15,6 +15,7 @@ import yaml
 from custom_components.schedule_state.const import (
     CONF_DURATION,
     CONF_END,
+    CONF_EXTRA_ATTRIBUTES,
     CONF_START,
     DOMAIN,
 )
@@ -561,7 +562,32 @@ async def test_extra_attributes(hass: HomeAssistant):
     now += timedelta(minutes=5)  # 23:20
     with patch(TIME_FUNCTION_PATH, return_value=now) as p:
         await sensor.async_update_ha_state(force_refresh=True)
+        assert sensor._attributes["swing_mode"] == "horizontal"
+        assert sensor._attributes["fan_mode"] == "mid"
 
+    # add an override for an attribute
+    now += timedelta(minutes=5)  # 23:25
+    await set_override(
+        hass,
+        f"sensor.{sensorname}",
+        now,
+        "temp_evening",
+        duration=15,
+        extra_attributes=dict(fan_mode="override", bogus_attribute="should_be_ignored"),
+    )
+
+    # check that it took effect
+    now += timedelta(minutes=5)  # 23:30
+    with patch(TIME_FUNCTION_PATH, return_value=now) as p:
+        await sensor.async_update_ha_state(force_refresh=True)
+        assert sensor._attributes["swing_mode"] == "horizontal"
+        assert sensor._attributes["fan_mode"] == "override"
+        assert "bogus_attribute" not in sensor._attributes
+
+    # check that it's cleared
+    now += timedelta(minutes=16)  # 23:46
+    with patch(TIME_FUNCTION_PATH, return_value=now) as p:
+        await sensor.async_update_ha_state(force_refresh=True)
         assert sensor._attributes["swing_mode"] == "horizontal"
         assert sensor._attributes["fan_mode"] == "mid"
 
@@ -588,7 +614,15 @@ def check_state(hass, name, value, p=None, now=None):
 
 
 async def set_override(
-    hass, target, now, state, start=None, end=None, duration=None, icon=None
+    hass,
+    target,
+    now,
+    state,
+    start=None,
+    end=None,
+    duration=None,
+    icon=None,
+    extra_attributes=None,
 ):
     data = {CONF_STATE: state}
     if start is not None:
@@ -599,6 +633,8 @@ async def set_override(
         data[CONF_DURATION] = duration
     if icon is not None:
         data[CONF_ICON] = icon
+    if extra_attributes is not None:
+        data[CONF_EXTRA_ATTRIBUTES] = extra_attributes
 
     with patch(TIME_FUNCTION_PATH, return_value=now) as p:
         await hass.services.async_call(
