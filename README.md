@@ -244,6 +244,12 @@ allowing templates to access `.hour`, `.minute`, and other attributes of the `ti
 Attributes are evaluated with the same top-to-bottom logic as states. If an attribute is not
 provided for an event, the attribute value reverts to the default.
 
+_Tip:_ You can add Home Assistant-specific attributes too. For example if you schedule target temperature values, this will make it display a graph:
+```yaml
+    extra_attributes:
+      unit_of_measurement: "°C"
+      state_class: measurement
+```
 ## Services
 
 ### `recalculate`
