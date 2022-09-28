@@ -689,7 +689,6 @@ class ScheduleSensorData:
                 track_entities=False,
                 default=dv,
             )
-            _LOGGER.error(f"{state} default: {type(dv)} {dv} {default_val}")
 
             # find an event in which the attribute is defined
             attr_val, _ = self.find_interval(self._custom_attributes[attr], nu)
