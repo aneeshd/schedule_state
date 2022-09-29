@@ -7,7 +7,7 @@ from unittest.mock import patch
 from homeassistant import setup
 from homeassistant.components import input_boolean
 from homeassistant.components.sensor import DOMAIN as SENSOR
-from homeassistant.const import CONF_ICON, CONF_STATE
+from homeassistant.const import CONF_ICON, CONF_ID, CONF_STATE
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt
 import yaml
@@ -261,10 +261,108 @@ async def test_overrides(hass: HomeAssistant) -> None:
 
     # add an override that goes into the next day
     await set_override(hass, "sensor.test000", now, "feisty", duration=120)
-    now += timedelta(minutes=2)  # 22:38
-    await recalculate(hass, "sensor.test000", now)
-    now += timedelta(minutes=2)  # 22:40
+    now += timedelta(minutes=4)  # 22:40
     await check_state_at_time(hass, sensor, now, "feisty")
+
+    # add a zero-length override
+    await set_override(
+        hass,
+        "sensor.test000",
+        now,
+        "ignored",
+        start=now.time().isoformat(),
+        end=now.time().isoformat(),
+    )
+    await check_state_at_time(hass, sensor, now, "feisty")
+
+    # add invalid override (all start/end/duration)
+    await set_override(
+        hass, "sensor.test000", now, "ignored", start="22:50", end="23:10", duration=5
+    )
+    await check_state_at_time(hass, sensor, now, "feisty")
+
+    # add invalid override (only start)
+    await set_override(hass, "sensor.test000", now, "ignored", start="22:50")
+    await check_state_at_time(hass, sensor, now, "feisty")
+
+    # add invalid override (start>end, same day)
+    await set_override(
+        hass, "sensor.test000", now, "ignored", end="22:50", start="23:10"
+    )
+    await check_state_at_time(hass, sensor, now, "feisty")
+
+
+async def test_overrides_with_id(hass: HomeAssistant) -> None:
+    """Test schedule_state overrides with ids."""
+    now = make_testtime(4, 0)
+
+    with open("tests/test000.yaml", "r") as f:
+        config = yaml.safe_load(f)
+
+    with patch(TIME_FUNCTION_PATH, return_value=now) as p:
+        await setup_test_entities(
+            hass,
+            config[0],
+        )
+
+        assert p.called, "Time patch was not applied"
+        assert p.return_value == now
+
+    # get the "test000" sensor
+    sensor = [e for e in hass.data["sensor"].entities][-1]
+
+    now += timedelta(minutes=10)  # 4:10
+    with patch(TIME_FUNCTION_PATH, return_value=now) as p:
+        await sensor.async_update_ha_state(force_refresh=True)
+
+        entity_state = check_state(hass, "sensor.test000", "asleep", p, now)
+        assert entity_state.attributes["friendly_name"] == "test000"
+
+    # test editing and removal of overrides
+    # add an override for the work day (state=work id=work)
+    await set_override(
+        hass, "sensor.test000", now, "work", start="9:00", end="17:00", id="work"
+    )
+    now = make_testtime(9, 0)
+    await check_state_at_time(hass, sensor, now, "work")
+
+    # shift the work day to start at 10
+    await set_override(
+        hass, "sensor.test000", now, "work", start="10:00", duration=8 * 60, id="work"
+    )
+    await check_state_at_time(hass, sensor, now, "awake")
+
+    # create a lunch break (state=awake id=lunch)
+    await set_override(
+        hass, "sensor.test000", now, "awake", duration=60, end="13:00", id="lunch"
+    )
+    now = make_testtime(12, 30)
+    await check_state_at_time(hass, sensor, now, "awake")
+
+    # extend lunch break by an hour from now (12:30-13:30)
+    await set_override(hass, "sensor.test000", now, "lunch", duration=60, id="lunch")
+    now = make_testtime(13, 25)
+    await check_state_at_time(hass, sensor, now, "lunch")
+
+    # back to work
+    now = make_testtime(13, 30)
+    await check_state_at_time(hass, sensor, now, "work")
+
+    # remove override by id
+    await remove_override(hass, "sensor.test000", now, id="work")
+    await check_state_at_time(hass, sensor, now, "awake")
+
+    # try to remove with invalid id
+    await remove_override(hass, "sensor.test000", now, id="work")
+
+    # backtrack to lunch time
+    now = make_testtime(13, 25)
+    await check_state_at_time(hass, sensor, now, "lunch")
+
+    # clear all overrides
+    await clear_overrides(hass, "sensor.test000", now)
+    await recalculate(hass, "sensor.test000", now)
+    await check_state_at_time(hass, sensor, now, "awake")
 
 
 def schedule_modified_by_template(configfile: str):
@@ -623,8 +721,11 @@ async def set_override(
     duration=None,
     icon=None,
     extra_attributes=None,
+    id=None,
 ):
     data = {CONF_STATE: state}
+    if id is not None:
+        data[CONF_ID] = id
     if start is not None:
         data[CONF_START] = start
     if end is not None:
@@ -644,6 +745,22 @@ async def set_override(
             blocking=True,
             target={
                 "entity_id": target,
+            },
+        )
+
+        assert p.called, "Time patch was not applied"
+        assert p.return_value == now
+
+
+async def remove_override(hass, target, now, id):
+    with patch(TIME_FUNCTION_PATH, return_value=now) as p:
+        await hass.services.async_call(
+            DOMAIN,
+            "remove_override",
+            blocking=True,
+            target={
+                "entity_id": target,
+                "id": id,
             },
         )
 

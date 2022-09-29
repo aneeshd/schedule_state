@@ -283,8 +283,23 @@ Other data required for this service call:
 | Data             | Meaning |
 |------------------|---------|
 | state            | The state to apply for this override |
+| id               | Optionally provide an ID for the override. |
 | icon             | Optionally provide an icon for this override |
 | extra_attributes | Optionally provide a `dict` of extra attributes for this override |
+
+If ID is provided, and there is already an override with that ID, the override is modified in-place.
+This maintains the override's ordering in the evaluation order.
+
+Providing an ID also allows the override to be removed later via a service call.
+
+
+### `remove_override`
+
+Remove the override with the specified ID.
+
+| Data             | Meaning |
+|------------------|---------|
+| id               | The override to remove |
 
 ### `clear_overrides`
 
