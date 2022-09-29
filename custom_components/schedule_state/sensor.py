@@ -13,6 +13,7 @@ from homeassistant.const import (
     ATTR_ENTITY_ID,
     CONF_CONDITION,
     CONF_ICON,
+    CONF_ID,
     CONF_NAME,
     CONF_STATE,
 )
@@ -123,9 +124,10 @@ RECALCULATE_SERVICE_SCHEMA = vol.Schema(
     }
 )
 
-OVERRIDE_SERVICE_SCHEMA = vol.Schema(
+SET_OVERRIDE_SERVICE_SCHEMA = vol.Schema(
     {
         vol.Required(ATTR_ENTITY_ID): cv.entity_ids,
+        vol.Optional(CONF_ID): cv.string,
         vol.Required(CONF_STATE): cv.string,
         vol.Optional(CONF_DURATION): cv.positive_int,
         vol.Optional(CONF_START): cv.time,
@@ -135,6 +137,14 @@ OVERRIDE_SERVICE_SCHEMA = vol.Schema(
     }
 )
 
+REMOVE_OVERRIDE_SERVICE_SCHEMA = vol.Schema(
+    {
+        vol.Optional(ATTR_ENTITY_ID): cv.entity_ids,
+        vol.Required(CONF_ID): cv.string,
+    }
+)
+
+
 CLEAR_OVERRIDES_SERVICE_SCHEMA = vol.Schema(
     {
         vol.Optional(ATTR_ENTITY_ID): cv.entity_ids,
@@ -143,8 +153,8 @@ CLEAR_OVERRIDES_SERVICE_SCHEMA = vol.Schema(
 
 
 class Override(dict):
-    def __init__(self, state, start, end, expires, icon, extra_attributes):
-        # _LOGGER.info(f"New Override: {state} s={start} e={end} expires={expires}")
+    def __init__(self, id, state, start, end, expires, icon, extra_attributes):
+        self["id"] = id
         self["state"] = state
         self["start"] = start
         self["end"] = end
@@ -195,12 +205,25 @@ async def async_setup_platform(
         update_tasks = []
         for target_device in target_devices:
             await target_device.async_set_override(
+                service.data.get(CONF_ID, None),
                 service.data[CONF_STATE],
                 service.data.get(CONF_START, None),
                 service.data.get(CONF_END, None),
                 service.data.get(CONF_DURATION, None),
                 service.data.get(CONF_ICON, None),
                 service.data.get(CONF_EXTRA_ATTRIBUTES, None),
+            )
+            update_tasks.append(target_device.async_update_ha_state(True))
+
+        if update_tasks:
+            await asyncio.wait(update_tasks)
+
+    async def async_remove_override_service_handler(service):
+        target_devices = get_target_devices(service)
+        update_tasks = []
+        for target_device in target_devices:
+            await target_device.async_remove_override(
+                service.data[CONF_ID],
             )
             update_tasks.append(target_device.async_update_ha_state(True))
 
@@ -227,7 +250,13 @@ async def async_setup_platform(
         DOMAIN,
         "set_override",
         async_set_override_service_handler,
-        schema=OVERRIDE_SERVICE_SCHEMA,
+        schema=SET_OVERRIDE_SERVICE_SCHEMA,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        "remove_override",
+        async_remove_override_service_handler,
+        schema=REMOVE_OVERRIDE_SERVICE_SCHEMA,
     )
     hass.services.async_register(
         DOMAIN,
@@ -322,13 +351,25 @@ class ScheduleSensor(SensorEntity):
         await self.data.process_events()
 
     async def async_set_override(
-        self, state: str, start, end, duration, icon, extra_attributes
+        self, id, state: str, start, end, duration, icon, extra_attributes
     ):
         """Set override state."""
         _LOGGER.info(
-            f"{self._name}: override to {state} for s={start} e={end} d={duration} ea={extra_attributes}"
+            f"{self._name}: override to {state} for id={id} s={start} e={end} d={duration} ea={extra_attributes}"
         )
-        if self.data.set_override(state, start, end, duration, icon, extra_attributes):
+        if self.data.set_override(
+            id, state, start, end, duration, icon, extra_attributes
+        ):
+            return await self.data.process_events()
+        return False
+
+    async def async_remove_override(
+        self,
+        id: str,
+    ):
+        """Remove override state."""
+        _LOGGER.info(f"{self._name}: remove override {id}")
+        if self.data.remove_override(id):
             return await self.data.process_events()
         return False
 
@@ -725,10 +766,11 @@ class ScheduleSensorData:
 
         return None, None
 
-    def set_override(self, state, start, end, duration, icon, extra_attributes):
+    def set_override(self, id, state, start, end, duration, icon, extra_attributes):
         now = dt.as_local(dt_now())
         allow_split = True
 
+        # FIXME weed out invalid cases using Voluptuous schema
         if start is None and end is None and duration is None:
             # 000
             _LOGGER.error("override failed: must provide one of start/end/duration")
@@ -790,7 +832,13 @@ class ScheduleSensorData:
         elif start > end and allow_split:
             # split into two overrides if there is a wraparound (eg: 23:55 to 00:10)
             ev = Override(
-                state, start, time.max, start_of_next_day(now), icon, extra_attributes
+                id,  # FIXME id will be duplicated
+                state,
+                start,
+                time.max,
+                start_of_next_day(now),
+                icon,
+                extra_attributes,
             )
             _LOGGER.info(f"adding override: {ev} (split)")
             self.overrides.append(ev)
@@ -799,9 +847,33 @@ class ScheduleSensorData:
             _LOGGER.error(f"override failed: start ({start}) > end ({end})")
             return False
 
-        ev = Override(state, start, end, expires, icon, extra_attributes)
-        self.overrides.append(ev)
+        ev = Override(id, state, start, end, expires, icon, extra_attributes)
+
+        # search for an override with id; if it exists modify it, else add a new one
+        idx = self._find_override_by_id(id)
+        if idx is None:
+            self.overrides.append(ev)
+        else:
+            self.overrides[idx] = ev
         return True
+
+    def remove_override(self, id: str):
+        # find and delete override with id
+        idx = self._find_override_by_id(id)
+        if idx is None:
+            _LOGGER.warning(f"{self.name}: remove_override id={id} not found")
+            return False
+        self.overrides.pop(idx)
+        return True
+
+    def _find_override_by_id(self, id: str):
+        if id is None:
+            return None
+        idx = [idx for idx, el in enumerate(self.overrides) if el["id"] == id]
+        if len(idx) == 1:
+            return idx[0]
+        else:
+            return None
 
     def clear_overrides(self):
         if len(self.overrides):

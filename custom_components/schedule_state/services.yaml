@@ -16,6 +16,13 @@ set_override:
     entity:
       integration: schedule_state
   fields:
+    id:
+      name: ID
+      description: Unique ID for the override
+      required: false
+      example: override123
+      selector:
+        text:
     state:
       name: State
       description: State to set
@@ -50,6 +57,27 @@ set_override:
       description: Icon to set
       required: false
       example: mdi:calendar-star
+      selector:
+        icon:
+    extended_attributes:
+      name: Extended Attributes
+      description: Extended Attributes
+      required: false
+      selector:
+        object:
+
+remove_override:
+  name: Set Override
+  description: Add a temporary override of a Schedule State entity
+  target:
+    entity:
+      integration: schedule_state
+  fields:
+    id:
+      name: ID
+      description: Unique ID for the override
+      required: false
+      example: override123
       selector:
         text:
 
