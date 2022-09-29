@@ -60,7 +60,7 @@ def basic_test(
     async def fn(hass: HomeAssistant) -> None:
         """Test basic schedule_state setup."""
 
-        with open(configfile, "r") as f:
+        with open(configfile) as f:
             config = yaml.safe_load(f)
 
         now = make_testtime(4, 0)
@@ -158,7 +158,7 @@ async def test_basic_setup_with_error(hass: HomeAssistant) -> None:
     """Test basic schedule_state setup."""
     now = make_testtime(4, 0)
 
-    with open("tests/test005.yaml", "r") as f:
+    with open("tests/test005.yaml") as f:
         config = yaml.safe_load(f)
 
     with patch(TIME_FUNCTION_PATH, return_value=now) as p:
@@ -198,7 +198,7 @@ async def test_overrides(hass: HomeAssistant) -> None:
     """Test schedule_state overrides."""
     now = make_testtime(4, 0)
 
-    with open("tests/test000.yaml", "r") as f:
+    with open("tests/test000.yaml") as f:
         config = yaml.safe_load(f)
 
     with patch(TIME_FUNCTION_PATH, return_value=now) as p:
@@ -296,7 +296,7 @@ async def test_overrides_with_id(hass: HomeAssistant) -> None:
     """Test schedule_state overrides with ids."""
     now = make_testtime(4, 0)
 
-    with open("tests/test000.yaml", "r") as f:
+    with open("tests/test000.yaml") as f:
         config = yaml.safe_load(f)
 
     with patch(TIME_FUNCTION_PATH, return_value=now) as p:
@@ -375,7 +375,7 @@ def schedule_modified_by_template(configfile: str):
             hass, input_boolean.DOMAIN, {"input_boolean": {"mode": None}}
         )
 
-        with open(configfile, "r") as f:
+        with open(configfile) as f:
             config = yaml.safe_load(f)
 
         now = make_testtime(4, 0)
@@ -417,7 +417,7 @@ def schedule_modified_by_template_with_error(configfile: str):
             hass, input_boolean.DOMAIN, {"input_boolean": {"mode": None}}
         )
 
-        with open(configfile, "r") as f:
+        with open(configfile) as f:
             config = yaml.safe_load(f)
 
         now = make_testtime(4, 0)
@@ -470,7 +470,7 @@ async def test_schedule_using_condition(hass: HomeAssistant):
     workday = "binary_sensor.workday_sensor"
 
     configfile = "tests/test011.yaml"
-    with open(configfile, "r") as f:
+    with open(configfile) as f:
         config = yaml.safe_load(f)
 
     # no workday sensor, not a holiday, early morning
@@ -550,7 +550,7 @@ async def test_extra_attributes(hass: HomeAssistant):
         hass, input_boolean.DOMAIN, {"input_boolean": {"mode": None}}
     )
 
-    with open(configfile, "r") as f:
+    with open(configfile) as f:
         config = yaml.safe_load(f)
 
     now = make_testtime(4, 0)
