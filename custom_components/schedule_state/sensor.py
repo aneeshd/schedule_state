@@ -828,11 +828,15 @@ class ScheduleSensorData:
             extra_attributes = {}
 
         if not (start > end):
-            pass
+            ev = Override(id, state, start, end, expires, icon, extra_attributes)
+            self._add_or_edit_override(id, ev)
+
         elif start > end and allow_split:
             # split into two overrides if there is a wraparound (eg: 23:55 to 00:10)
+            # note: this will create 2 overrides with the same id; this is the only way
+            # it can happen
             ev = Override(
-                id,  # FIXME id will be duplicated
+                id,
                 state,
                 start,
                 time.max,
@@ -841,37 +845,44 @@ class ScheduleSensorData:
                 extra_attributes,
             )
             _LOGGER.info(f"adding override: {ev} (split)")
-            self.overrides.append(ev)
+            self._add_or_edit_override(id, ev)
             start = time.min
+            ev = Override(id, state, start, end, expires, icon, extra_attributes)
+            self._add_or_edit_override(id, ev, expect_duplicate_id=True)
         else:
             _LOGGER.error(f"override failed: start ({start}) > end ({end})")
             return False
 
-        ev = Override(id, state, start, end, expires, icon, extra_attributes)
-
-        # search for an override with id; if it exists modify it, else add a new one
-        idx = self._find_override_by_id(id)
-        if idx is None:
-            self.overrides.append(ev)
-        else:
-            self.overrides[idx] = ev
         return True
 
     def remove_override(self, id: str):
-        # find and delete override with id
-        idx = self._find_override_by_id(id)
-        if idx is None:
+        # find and delete overrides with id
+        idxs = self._find_override_by_id(id)
+        if idxs is None:
             _LOGGER.warning(f"{self.name}: remove_override id={id} not found")
             return False
-        self.overrides.pop(idx)
+        for idx in reversed(sorted(idxs)):
+            self.overrides.pop(idx)
         return True
+
+    def _add_or_edit_override(self, id: str, ev: Override, expect_duplicate_id: bool = False):
+        # search for an override with id; if it exists, modify it, else add a new one
+        idxs = self._find_override_by_id(id)
+        if idxs is None or expect_duplicate_id:
+            self.overrides.append(ev)
+        else:
+            idxs = [idx for idx in sorted(idxs)]
+            idx = idxs.pop(0)
+            self.overrides[idx] = ev
+            for idx in reversed(sorted(idxs)):
+                self.overrides.pop(idx)
 
     def _find_override_by_id(self, id: str):
         if id is None:
             return None
         idx = [idx for idx, el in enumerate(self.overrides) if el["id"] == id]
-        if len(idx) == 1:
-            return idx[0]
+        if len(idx):
+            return idx
         else:
             return None
 

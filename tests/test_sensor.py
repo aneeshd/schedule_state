@@ -260,9 +260,27 @@ async def test_overrides(hass: HomeAssistant) -> None:
     await clear_overrides(hass, "sensor.test000", now)
 
     # add an override that goes into the next day
-    await set_override(hass, "sensor.test000", now, "feisty", duration=120)
+    await set_override(hass, "sensor.test000", now, "feisty", duration=120, id="override123")
     now += timedelta(minutes=4)  # 22:40
     await check_state_at_time(hass, sensor, now, "feisty")
+
+    # check wraparound
+    now = make_testtime(0, 30)
+    await check_state_at_time(hass, sensor, now, "feisty")
+    now = make_testtime(0, 36)
+    await check_state_at_time(hass, sensor, now, "asleep")
+
+    # edit split override, check that split disappears
+    now = make_testtime(22, 45)
+    await set_override(hass, "sensor.test000", now, "feisty", duration=20, id="override123")
+    await check_state_at_time(hass, sensor, now, "feisty")
+    now += timedelta(minutes=21)
+    await check_state_at_time(hass, sensor, now, "asleep")
+    now = make_testtime(0, 30)
+    await check_state_at_time(hass, sensor, now, "asleep")
+
+    now = make_testtime(22, 45)
+    await set_override(hass, "sensor.test000", now, "feisty", start="22:40", end="23:59:59", id="override123")
 
     # add a zero-length override
     await set_override(
@@ -691,14 +709,12 @@ async def test_extra_attributes(hass: HomeAssistant):
 
 
 async def check_state_at_time(hass, sensor, now, value):
-    _LOGGER.info(f"check_state_at_time {now} for {sensor.entity_id} - expect {value}")
     with patch(TIME_FUNCTION_PATH, return_value=now) as p:
         await sensor.async_update_ha_state(force_refresh=True)
         return check_state(hass, sensor.entity_id, value, p, now)
 
 
 def check_state(hass, name, value, p=None, now=None):
-    _LOGGER.debug(f"check state of {name} - expect {value}")
     entity_state = hass.states.get(name)
     assert entity_state, f"Entity {name} does not exist"
     if p is not None:
