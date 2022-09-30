@@ -865,7 +865,9 @@ class ScheduleSensorData:
             self.overrides.pop(idx)
         return True
 
-    def _add_or_edit_override(self, id: str, ev: Override, expect_duplicate_id: bool = False):
+    def _add_or_edit_override(
+        self, id: str, ev: Override, expect_duplicate_id: bool = False
+    ):
         # search for an override with id; if it exists, modify it, else add a new one
         idxs = self._find_override_by_id(id)
         if idxs is None or expect_duplicate_id:

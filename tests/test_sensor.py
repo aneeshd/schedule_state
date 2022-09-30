@@ -260,7 +260,9 @@ async def test_overrides(hass: HomeAssistant) -> None:
     await clear_overrides(hass, "sensor.test000", now)
 
     # add an override that goes into the next day
-    await set_override(hass, "sensor.test000", now, "feisty", duration=120, id="override123")
+    await set_override(
+        hass, "sensor.test000", now, "feisty", duration=120, id="override123"
+    )
     now += timedelta(minutes=4)  # 22:40
     await check_state_at_time(hass, sensor, now, "feisty")
 
@@ -272,7 +274,9 @@ async def test_overrides(hass: HomeAssistant) -> None:
 
     # edit split override, check that split disappears
     now = make_testtime(22, 45)
-    await set_override(hass, "sensor.test000", now, "feisty", duration=20, id="override123")
+    await set_override(
+        hass, "sensor.test000", now, "feisty", duration=20, id="override123"
+    )
     await check_state_at_time(hass, sensor, now, "feisty")
     now += timedelta(minutes=21)
     await check_state_at_time(hass, sensor, now, "asleep")
@@ -280,7 +284,15 @@ async def test_overrides(hass: HomeAssistant) -> None:
     await check_state_at_time(hass, sensor, now, "asleep")
 
     now = make_testtime(22, 45)
-    await set_override(hass, "sensor.test000", now, "feisty", start="22:40", end="23:59:59", id="override123")
+    await set_override(
+        hass,
+        "sensor.test000",
+        now,
+        "feisty",
+        start="22:40",
+        end="23:59:59",
+        id="override123",
+    )
 
     # add a zero-length override
     await set_override(
