@@ -67,8 +67,8 @@ set_override:
         object:
 
 remove_override:
-  name: Set Override
-  description: Add a temporary override of a Schedule State entity
+  name: Remove Override
+  description: Remove a previously added override of a Schedule State entity
   target:
     entity:
       integration: schedule_state
