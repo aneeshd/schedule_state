@@ -436,9 +436,6 @@ class ScheduleSensorData:
             CONF_DEFAULT_STATE,
             default=DEFAULT_STATE,
         )
-        if self.default_state is None:
-            # error evaluating template - use the default
-            self.default_state = DEFAULT_STATE
         self.known_states.add(self.default_state)
 
         # TODO we should handle 'icon' the same as other extra attributes
@@ -452,6 +449,7 @@ class ScheduleSensorData:
                 event,
                 CONF_STATE,
                 default=self.default_state,
+                return_none_on_error=True,
             )
             if state is None:
                 # error evaluating template - skip this event
@@ -523,6 +521,7 @@ class ScheduleSensorData:
             icon = self.evaluate_template(
                 event,
                 CONF_ICON,
+                return_none_on_error=True,
             )
             if icon is not None:
                 self.icon_map[state] = icon
@@ -541,7 +540,7 @@ class ScheduleSensorData:
                         interval,
                     )
 
-        _LOGGER.info(f"{self.name}(alt):\n{pformat(states)}\n{pformat(attrs)}")
+        _LOGGER.info(f"{self.name}:\n{pformat(states)}\n{pformat(attrs)}")
         self._states = states
         self._custom_attributes = attrs
         self._refresh_time = dt.as_local(dt_now())
@@ -573,6 +572,7 @@ class ScheduleSensorData:
             CONF_START,
             CONF_START_TEMPLATE,
             time.min,
+            return_none_on_error=True,
         )
         ret2 = self.guess_value(ret)
         ret = ret2
@@ -587,6 +587,7 @@ class ScheduleSensorData:
             CONF_END,
             CONF_END_TEMPLATE,
             time.max,
+            return_none_on_error=True,
         )
         ret2 = self.guess_value(ret)
         ret = ret2
@@ -602,32 +603,36 @@ class ScheduleSensorData:
         prefixt: str = None,
         default=None,
         track_entities: bool = True,
+        return_none_on_error: bool = False,
     ):
-        s = obj.get(prefix, None)
-        st = obj.get(prefixt, None)
+        value = obj.get(prefix, None)
+        value_template = obj.get(prefixt, None)
 
-        s = s or st
-        st = s or st
+        # 'thing' and 'thing'_template are now aliases, and it is only allowed to provide one or the other,
+        # so we can safely combine them knowing that at least one of them will be 'None'
+        value = value or value_template
+        del value_template
+        del prefixt
 
         debugmsg = ""
 
-        if s is None and st is None:
+        if value is None:
             debugmsg = "(default)"
             ret = default
 
-        elif not isinstance(s, Template):
+        elif not isinstance(value, Template):
             debugmsg = "(value)"
-            ret = s
+            ret = value
 
         else:
-            st.hass = self.hass
+            value.hass = self.hass
             # TODO should be able to combine these two
             try:
-                temp = st.async_render_with_possible_json_value(st, time.min)
-                info = st.async_render_to_info(None, parse_result=False)
+                temp = value.async_render_with_possible_json_value(value, time.min)
+                info = value.async_render_to_info(None, parse_result=False)
             except (ValueError, TypeError) as e:
-                _LOGGER.error(f"{self.name}: ... failed to evaluate {prefixt}: {e}")
-                return None
+                _LOGGER.error(f"{self.name}: ... >> {prefix}: failed to evaluate: {e}")
+                return None if return_none_on_error else default
 
             if track_entities:
                 if len(info.entities):
@@ -640,15 +645,15 @@ class ScheduleSensorData:
         _LOGGER.debug(f"{self.name}: >> {prefix}: {ret} {debugmsg}")
         return ret
 
-    def guess_value(self, text):
+    def guess_value(self, value):
         """After evaluating a template, try to figure out what the resulting value means.
         We are looking for a time value. Dates don't matter."""
 
-        if not isinstance(text, str):
-            return text
+        if not isinstance(value, str):
+            return value
 
         try:
-            date = dt.parse_datetime(text)
+            date = dt.parse_datetime(value)
             if date is not None:
                 _LOGGER.debug(f"{self.name}: ...... found datetime: {date}")
                 tme = dt.as_local(date).time()
@@ -657,7 +662,7 @@ class ScheduleSensorData:
             pass
 
         try:
-            date = datetime.fromisoformat(text)
+            date = datetime.fromisoformat(value)
             _LOGGER.debug(f"{self.name}: ...... found isoformat date: {date}")
             tme = dt.as_local(date).time()
             return tme
@@ -665,7 +670,7 @@ class ScheduleSensorData:
             pass
 
         try:
-            tme = dt.parse_time(text)
+            tme = dt.parse_time(value)
             if tme is not None:
                 _LOGGER.debug(f"{self.name}: ...... found time: {tme}")
                 return localtime_from_time(tme)
@@ -673,7 +678,7 @@ class ScheduleSensorData:
             pass
 
         try:
-            tme = time.fromisoformat(text)
+            tme = time.fromisoformat(value)
             if tme is not None:
                 _LOGGER.debug(f"{self.name}: ...... found isoformat time: {tme}")
                 return localtime_from_time(tme)
@@ -681,7 +686,7 @@ class ScheduleSensorData:
             pass
 
         try:
-            date = dt.utc_from_timestamp(int(float(text)))
+            date = dt.utc_from_timestamp(int(float(value)))
             _LOGGER.debug(f"{self.name}: ...... found timestamp: {date}")
             tme = dt.as_local(date).time()
             return tme
@@ -695,12 +700,14 @@ class ScheduleSensorData:
         now = dt.as_local(dt_now())
         nu = time(now.hour, now.minute)
 
+        # clear out overrides that have expired
         self.overrides = [o for o in self.overrides if dt.as_local(o["expires"]) > now]
         for o in self.overrides:
             _LOGGER.debug(
                 f"{self.name}: override = {o['start']} - {o['end']} == {o['state']} [expires {o['expires']}]"
             )
 
+        # periodically re-evaluate (refresh) the schedule
         self.attributes = {}
         time_since_refresh = now - self._refresh_time
         if time_since_refresh.total_seconds() >= self.refresh.total_seconds() or (
@@ -709,6 +716,7 @@ class ScheduleSensorData:
             await self.process_events()
             self.force_refresh = None
 
+        # find that state and interval that matches the current time
         state, interval = self.find_interval(self._states, nu)
         if state is not None:
             _LOGGER.debug(f"{self.name}: current state is {state} ({nu})")
@@ -730,29 +738,31 @@ class ScheduleSensorData:
 
         # process extra attributes
         for attr in self._attr_keys:
-            # get the default value
-            dv = self.extra_attributes[attr]
-            default_val = self.evaluate_template(
-                {attr: dv},
-                attr,
-                track_entities=False,
-                default=dv,
-            )
-
             # find an event in which the attribute is defined
             attr_val, _ = self.find_interval(self._custom_attributes[attr], nu)
+
+            # figure out the attribute value
+            val = None
             if attr_val is not None:
-                # figure out the attribute value
                 val = self.evaluate_template(
                     {attr: attr_val},
                     attr,
                     track_entities=False,
-                    default=default_val,
+                    default=None,
                 )
-                self.attributes[attr] = val
-            else:
-                # no value specified - revert to the default
-                self.attributes[attr] = default_val
+
+            if val is None:
+                # no value specified or template evaluation failed; get the default value
+                # the default here if the template evaluation fails is the "template" itself - YMMV
+                dv = self.extra_attributes[attr]
+                val = self.evaluate_template(
+                    {attr: dv},
+                    attr,
+                    track_entities=False,
+                    default=dv,
+                )
+
+            self.attributes[attr] = val
 
     def find_interval(self, states, nu):
         for state in states:

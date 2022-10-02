@@ -1,0 +1,183 @@
+---
+#### heating_6_ : Nappali
+sensor:
+  - platform: schedule_state
+    name: Heating 6 schedule
+    extra_attributes:
+      unit_of_measurement: "°C"
+      state_class: measurement
+      state_name: "Távollét (alapértelmezett)"
+    refresh: "6:00:00"
+    default_state: "{{ states('input_number.heating_temp_away_mode') }}"
+    icon: mdi:web-clock
+    error_icon: mdi:clock-alert
+    minutes_to_refresh_on_error: 5
+    events:
+# HÉTKÖZNAP
+      - state: "{{ states('input_number.heating_6_temp_night') }}"
+        state_name: "Hétköznap éjszaka"
+        icon: mdi:clock-time-eleven-outline
+        end: "{{ states('input_datetime.heating_weekday_morning_start') }}"
+        condition:
+          - condition: state
+            entity_id: 'binary_sensor.workday_sensor'
+            state: 'on'
+      - state: "{{ states('input_number.heating_6_temp_morning') }}"
+        state_name: "Hétköznap reggel"
+        icon: mdi:clock-time-seven-outline
+        start: "{{ states('input_datetime.heating_weekday_morning_start') }}"
+        end: "{{ states('input_datetime.heating_weekday_day_start') }}"
+        condition:
+          - condition: state
+            entity_id: 'binary_sensor.workday_sensor'
+            state: 'on'
+      - state: "{{ states('input_number.heating_6_temp_day') }}"
+        state_name: "Hétköznap napközben"
+        icon: mdi:clock-time-one-outline
+        start: "{{ states('input_datetime.heating_weekday_day_start') }}"
+        end: "{{ states('input_datetime.heating_weekday_evening_start') }}"
+        condition:
+          - condition: state
+            entity_id: 'binary_sensor.workday_sensor'
+            state: 'on'
+      - state: "{{ states('input_number.heating_6_temp_evening') }}"
+        state_name: "Hétköznap este"
+        icon: mdi:clock-time-four-outline
+        start: "{{ states('input_datetime.heating_weekday_evening_start') }}"
+        end: "{{ states('input_datetime.heating_weekday_night_start') }}"
+        condition:
+          - condition: state
+            entity_id: 'binary_sensor.workday_sensor'
+            state: 'on'
+      - state: "{{ states('input_number.heating_6_temp_night') }}"
+        state_name: "Hétköznap éjszaka"
+        icon: mdi:clock-time-eleven-outline
+        start: "{{ states('input_datetime.heating_weekday_night_start') }}"
+        condition:
+          - condition: state
+            entity_id: 'binary_sensor.workday_sensor'
+            state: 'on'
+
+# HÉTVÉGE
+      - state: "{{ states('input_number.heating_6_temp_night') }}"
+        state_name: "Hétvége éjszaka"
+        icon: mdi:clock-time-eleven-outline
+        end: "{{ states('input_datetime.heating_weekend_morning_start') }}"
+        condition:
+          - condition: state
+            entity_id: 'binary_sensor.workday_sensor'
+            state: 'off'
+      - state: "{{ states('input_number.heating_6_temp_morning') }}"
+        state_name: "Hétvége reggel"
+        icon: mdi:clock-time-seven-outline
+        start: "{{ states('input_datetime.heating_weekend_morning_start') }}"
+        end: "{{ states('input_datetime.heating_weekend_day_start') }}"
+        condition:
+          - condition: state
+            entity_id: 'binary_sensor.workday_sensor'
+            state: 'off'
+      - state: "{{ states('input_number.heating_6_temp_day') }}"
+        state_name: "Hétvége napközben"
+        icon: mdi:clock-time-one-outline
+        start: "{{ states('input_datetime.heating_weekend_day_start') }}"
+        end: "{{ states('input_datetime.heating_weekend_evening_start') }}"
+        condition:
+          - condition: state
+            entity_id: 'binary_sensor.workday_sensor'
+            state: 'off'
+      - state: "{{ states('input_number.heating_6_temp_evening') }}"
+        state_name: "Hétvége este"
+        icon: mdi:clock-time-four-outline
+        start: "{{ states('input_datetime.heating_weekend_evening_start') }}"
+        end: "{{ states('input_datetime.heating_weekend_night_start') }}"
+        condition:
+          - condition: state
+            entity_id: 'binary_sensor.workday_sensor'
+            state: 'off'
+      - state: "{{ states('input_number.heating_6_temp_night') }}"
+        state_name: "Hétvége éjszaka"
+        icon: mdi:clock-time-eleven-outline
+        start: "{{ states('input_datetime.heating_weekend_night_start') }}"
+        condition:
+          - condition: state
+            entity_id: 'binary_sensor.workday_sensor'
+            state: 'off'
+
+# FELÜLBÍRÁLÁS
+      - state: "{{ states('input_number.heating_6_temp_override') }}"
+        state_name: "Felülbírálva"
+        icon: mdi:account-clock-outline
+        condition:
+          - condition: state
+            entity_id: input_boolean.heating_6_override_switch
+            state: 'on'
+
+# TÁVOL
+      - state: "{{ states('input_number.heating_temp_away_mode') }}"
+        state_name: "Távollét"
+        icon: mdi:home-remove-outline
+        condition:
+          - condition: state
+            entity_id: sensor.helyzet_csalad
+            state: 'not_home'
+
+input_number:
+  heating_temp_away_mode:
+    initial: 10
+    min: 10
+    max: 30
+  heating_6_temp_override:
+    initial: 12
+    min: 10
+    max: 30
+  heating_6_temp_night:
+    initial: 14
+    min: 10
+    max: 30
+  heating_6_temp_evening:
+    initial: 16
+    min: 10
+    max: 30
+  heating_6_temp_day:
+    initial: 18
+    min: 10
+    max: 30
+  heating_6_temp_morning:
+    initial: 20
+    min: 10
+    max: 30
+
+input_datetime:
+  heating_weekday_morning_start:
+    has_time: true
+    initial: "6:00"
+  heating_weekday_day_start:
+    has_time: true
+    initial: "8:00"
+  heating_weekday_evening_start:
+    has_time: true
+    initial: "17:00"
+  heating_weekday_night_start:
+    has_time: true
+    initial: "22:00"
+  heating_weekend_morning_start:
+    has_time: true
+    initial: "6:00"
+  heating_weekend_day_start:
+    has_time: true
+    initial: "8:00"
+  heating_weekend_evening_start:
+    has_time: true
+    initial: "17:00"
+  heating_weekend_night_start:
+    has_time: true
+    initial: "23:00"
+
+input_boolean:
+  helyzet_csalad:
+  heating_6_override_switch:
+
+template:
+  - sensor:
+      - name: helyzet_csalad
+        state: "{{ states('input_boolean.helyzet_csalad')}}"

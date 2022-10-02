@@ -19,6 +19,9 @@ binary_sensor:
 
 sensor schedules: !include_dir_merge_list schedules/
 
+homeassistant:
+  packages: !include_dir_named issues
+
 input_boolean:
   manual_mode:
     name: Manual mode

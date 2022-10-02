@@ -29,6 +29,7 @@
 	},
 	"mounts": [
 		"source=${localWorkspaceFolder}/.devcontainer/schedules,target=/config/schedules,type=bind",
+		"source=${localWorkspaceFolder}/.devcontainer/issues,target=/config/issues,type=bind",
 		"source=${localWorkspaceFolder}/.devcontainer/automations.yaml,target=/config/automations.yaml,type=bind",
 	]
 }
