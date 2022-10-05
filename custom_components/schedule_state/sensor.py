@@ -351,10 +351,14 @@ class ScheduleSensor(SensorEntity, RestoreEntity):
                 )
 
         @callback
-        def recalc_callback(*args):
+        async def recalc_callback(*args):
             _LOGGER.debug(f"{self.data.name}: something changed {args}")
-            self.data.force_refresh = dt.as_local(dt_now())
-            self.schedule_update_ha_state(force_refresh=True)
+            old_state = self._state
+            old_attrs = self.data.extra_attributes
+            await self.data.process_events()
+            await self.async_update()
+            if self._state != old_state or self.data.extra_attributes != old_attrs:
+                self.schedule_update_ha_state(force_refresh=True)
 
         if len(self.data.entities):
             _LOGGER.info(

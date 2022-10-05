@@ -1,1 +1,11 @@
-[]
+- description: "heating_6_schedule changed"
+  mode: single
+  trigger:
+    - platform: state
+      entity_id:
+        - sensor.heating_6_schedule
+  condition: []
+  action:
+    - service: persistent_notification.create
+      data:
+        message: "heating_6_schedule changed"
