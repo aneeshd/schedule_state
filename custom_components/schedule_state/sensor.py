@@ -2,11 +2,13 @@
 A sensor that returns a string based on a defined schedule.
 """
 import asyncio
+from dataclasses import dataclass
 from datetime import datetime, time, timedelta
 import hashlib
 import locale
 import logging
 from pprint import pformat
+from typing import Any
 
 from homeassistant.components.sensor import PLATFORM_SCHEMA, SensorEntity
 from homeassistant.const import (
@@ -16,6 +18,7 @@ from homeassistant.const import (
     CONF_ID,
     CONF_NAME,
     CONF_STATE,
+    EVENT_HOMEASSISTANT_START,
 )
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import (
@@ -29,6 +32,7 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.reload import async_setup_reload_service
+from homeassistant.helpers.restore_state import ExtraStoredData, RestoreEntity
 from homeassistant.helpers.template import Template
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from homeassistant.util import dt
@@ -153,6 +157,9 @@ CLEAR_OVERRIDES_SERVICE_SCHEMA = vol.Schema(
 
 
 class Override(dict):
+
+    KNOWN_ATTRS = ["id", "state", "start", "end", "expires", "icon"]
+
     def __init__(self, id, state, start, end, expires, icon, extra_attributes):
         self["id"] = id
         self["state"] = state
@@ -162,6 +169,47 @@ class Override(dict):
         self["icon"] = icon
         for attr in extra_attributes:
             self[attr] = extra_attributes[attr]
+
+    @classmethod
+    def from_dict(cls, d: dict):  # -> Override | None:
+        """Reconstruct a saved override from a dict"""
+        try:
+            extra = {k: d[k] for k in d if k not in cls.KNOWN_ATTRS}
+
+            x = Override(
+                d.get("id"),
+                d.get("state"),
+                dt.parse_time(d.get("start")),
+                dt.parse_time(d.get("end")),
+                dt.parse_datetime(d.get("expires")),
+                d.get("icon"),
+                extra,
+            )
+            return x
+
+        except (ValueError, KeyError):
+            _LOGGER.error(f"could not reconstruct saved override: {d}")
+            return None
+
+
+@dataclass
+class ScheduleStateExtraStoredData(ExtraStoredData):
+    """This is used by the RestoreEntity framework to store schedule_state-specific data"""
+
+    overrides: list[Override]
+
+    def as_dict(self) -> dict[str, Any]:
+        return dict(overrides=self.overrides)
+
+    @classmethod
+    def from_dict(
+        cls, restored: dict[str, Any]
+    ):  # -> ScheduleStateExtraStoredData | None:
+        try:
+            overrides = restored["overrides"]
+        except KeyError:
+            return None
+        return cls(overrides)
 
 
 async def async_setup_platform(
@@ -265,10 +313,11 @@ async def async_setup_platform(
         schema=CLEAR_OVERRIDES_SERVICE_SCHEMA,
     )
 
-    async_add_entities([ScheduleSensor(hass, name, data, config)], True)
+    entity = ScheduleSensor(hass, name, data, config)
+    async_add_entities([entity], True)
 
 
-class ScheduleSensor(SensorEntity):
+class ScheduleSensor(SensorEntity, RestoreEntity):
     """Representation of a sensor that returns a state name based on a predefined schedule."""
 
     def __init__(self, hass, name, data, config):
@@ -284,6 +333,22 @@ class ScheduleSensor(SensorEntity):
     async def async_added_to_hass(self):
         """Handle added to Hass."""
         await super().async_added_to_hass()
+
+        # reload saved overrides, if any
+        state = await self.async_get_last_extra_data()
+        if state is not None:
+            overrides = state.as_dict()["overrides"]
+
+            if self.hass.is_running:
+                await self.async_update_config(overrides)
+            else:
+
+                async def schedule_start_hass(now):
+                    await self.async_update_config(overrides)
+
+                self.hass.bus.async_listen_once(
+                    EVENT_HOMEASSISTANT_START, schedule_start_hass
+                )
 
         @callback
         def recalc_callback(*args):
@@ -360,7 +425,9 @@ class ScheduleSensor(SensorEntity):
         if self.data.set_override(
             id, state, start, end, duration, icon, extra_attributes
         ):
-            return await self.data.process_events()
+            await self.data.process_events()
+            return True
+
         return False
 
     async def async_remove_override(
@@ -370,15 +437,43 @@ class ScheduleSensor(SensorEntity):
         """Remove override state."""
         _LOGGER.info(f"{self._name}: remove override {id}")
         if self.data.remove_override(id):
-            return await self.data.process_events()
+            await self.data.process_events()
+            return True
+
         return False
 
     async def async_clear_overrides(self):
         """Clear overrides, if any."""
         _LOGGER.info(f"{self._name}: clear overrides")
         if self.data.clear_overrides():
-            return await self.data.process_events()
+            await self.data.process_events()
+            return True
+
         return False
+
+    @property
+    def extra_restore_state_data(self) -> ScheduleStateExtraStoredData:
+        """This is periodically called by RestoreEntity to save dynamic data"""
+        # overrides are only saved every 15 minutes
+        # see STATE_DUMP_INTERVAL in restore_state.py -- is there any way to force this when an override is added/removed?
+        _LOGGER.debug(f"{self.name}: extra_restore_state_data = {self.data.overrides}")
+        return ScheduleStateExtraStoredData(self.data.overrides)
+
+    async def async_update_config(self, override_list: list[Override]) -> None:
+        """Called by async_added_to_hass with a list of previously-saved overrides"""
+        _LOGGER.debug(f"{self._name}: async_update_config {override_list}")
+
+        overrides = []
+        for override_data in override_list:
+            override = Override.from_dict(override_data)
+            if override is not None:
+                overrides.append(override)
+
+        # update the schedule if any overrides were found
+        if len(overrides):
+            self.data.overrides = overrides
+            await self.data.process_events()
+            await self.async_update()
 
 
 class ScheduleSensorData:
@@ -857,8 +952,10 @@ class ScheduleSensorData:
             _LOGGER.info(f"adding override: {ev} (split)")
             self._add_or_edit_override(id, ev)
             start = time.min
-            ev = Override(id, state, start, end, expires, icon, extra_attributes)
-            self._add_or_edit_override(id, ev, expect_duplicate_id=True)
+            if end > start:
+                # weed out degenerate case where start==end, which happens if original end=00:00:00
+                ev = Override(id, state, start, end, expires, icon, extra_attributes)
+                self._add_or_edit_override(id, ev, expect_duplicate_id=True)
         else:
             _LOGGER.error(f"override failed: start ({start}) > end ({end})")
             return False
