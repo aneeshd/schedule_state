@@ -87,3 +87,57 @@ clear_overrides:
   target:
     entity:
       integration: schedule_state
+
+turn_on:
+  name: Turn on
+  description: If the schedule has an "on" state, switch to it is as an override.
+  target:
+    entity:
+      integration: schedule_state
+  fields:
+    duration:
+      name: Duration
+      description: "Duration for the temporary override (default: 30 minutes)"
+      required: false
+      example: 2
+      selector:
+        number:
+          min: 1
+          max: 360
+          unit_of_measurement: minutes
+
+turn_off:
+  name: Turn off
+  description: If the schedule has an "off" state, switch to it is as an override.
+  target:
+    entity:
+      integration: schedule_state
+  fields:
+    duration:
+      name: Duration
+      description: "Duration for the temporary override (default: 30 minutes)"
+      required: false
+      example: 2
+      selector:
+        number:
+          min: 1
+          max: 360
+          unit_of_measurement: minutes
+
+toggle:
+  name: Toggle
+  description: If the schedule has "on" and "off" states, toggle between them as an override.
+  target:
+    entity:
+      integration: schedule_state
+  fields:
+    duration:
+      name: Duration
+      description: "Duration for the temporary override (default: 30 minutes)"
+      required: false
+      example: 2
+      selector:
+        number:
+          min: 1
+          max: 360
+          unit_of_measurement: minutes

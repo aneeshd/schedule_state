@@ -7,7 +7,14 @@ from unittest.mock import patch
 from homeassistant import setup
 from homeassistant.components import input_boolean
 from homeassistant.components.sensor import DOMAIN as SENSOR
-from homeassistant.const import CONF_ICON, CONF_ID, CONF_STATE
+from homeassistant.const import (
+    CONF_ICON,
+    CONF_ID,
+    CONF_STATE,
+    SERVICE_TOGGLE,
+    SERVICE_TURN_OFF,
+    SERVICE_TURN_ON,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt
 import yaml
@@ -137,6 +144,22 @@ def basic_test(
         else:
             # check that reported end time has wrapped
             assert sensor._attributes["friendly_end"] == "05:30:00"
+
+        # check toggle - this should be ignored because the schedule does not have on/off states
+        with patch(TIME_FUNCTION_PATH, return_value=now) as p:
+            await hass.services.async_call(
+                DOMAIN,
+                SERVICE_TOGGLE,
+                # service_data=data,
+                blocking=True,
+                target={
+                    "entity_id": f"sensor.{sensorname}",
+                },
+            )
+            await hass.async_block_till_done()
+
+        now += timedelta(minutes=2)  # 22:42
+        await check_state_at_time(hass, sensor, now, "asleep")
 
     return fn
 
@@ -432,6 +455,56 @@ def schedule_modified_by_template(configfile: str):
         await check_state_at_time(hass, sensor, now, "off")
 
         now += timedelta(hours=2)  # 14:01
+        await check_state_at_time(hass, sensor, now, "off")
+
+        # check toggle/turn on/turn off
+        with patch(TIME_FUNCTION_PATH, return_value=now) as p:
+            await hass.services.async_call(
+                DOMAIN,
+                SERVICE_TOGGLE,
+                # service_data=data,
+                blocking=True,
+                target={
+                    "entity_id": f"sensor.{sensorname}",
+                },
+            )
+            await hass.async_block_till_done()
+
+        now += timedelta(minutes=2)  # 14:03
+        await check_state_at_time(hass, sensor, now, "on")
+
+        with patch(TIME_FUNCTION_PATH, return_value=now) as p:
+            await hass.services.async_call(
+                DOMAIN,
+                SERVICE_TURN_OFF,
+                # service_data=data,
+                blocking=True,
+                target={
+                    "entity_id": f"sensor.{sensorname}",
+                },
+            )
+            await hass.async_block_till_done()
+
+        now += timedelta(minutes=2)  # 14:05
+        await check_state_at_time(hass, sensor, now, "off")
+
+        with patch(TIME_FUNCTION_PATH, return_value=now) as p:
+            await hass.services.async_call(
+                DOMAIN,
+                SERVICE_TURN_ON,
+                # service_data=data,
+                blocking=True,
+                target={
+                    "entity_id": f"sensor.{sensorname}",
+                },
+            )
+            await hass.async_block_till_done()
+
+        now += timedelta(minutes=2)  # 14:07
+        await check_state_at_time(hass, sensor, now, "on")
+
+        await remove_override(hass, f"sensor.{sensorname}", now, id="turn_on_off")
+        now += timedelta(minutes=2)  # 14:09
         await check_state_at_time(hass, sensor, now, "off")
 
     return fn

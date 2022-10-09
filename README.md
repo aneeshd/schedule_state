@@ -146,7 +146,7 @@ This indicates that the condition definition may need to be examined.
 ## Templates
 
 State values, start, and end times can be specified using [templates](https://www.home-assistant.io/docs/configuration/templating/).
-Simple use a template for any `state`, `default_state`, `start`, or `end` definition.
+Simply use a template for any `state`, `default_state`, `start`, or `end` definition.
 
 In previous versions, it was necessary to use the attributes `start_template`/`end_template` instead of `start`/`end`.
 

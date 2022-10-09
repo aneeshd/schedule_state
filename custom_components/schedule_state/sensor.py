@@ -19,6 +19,11 @@ from homeassistant.const import (
     CONF_NAME,
     CONF_STATE,
     EVENT_HOMEASSISTANT_START,
+    SERVICE_TOGGLE,
+    SERVICE_TURN_OFF,
+    SERVICE_TURN_ON,
+    STATE_OFF,
+    STATE_ON,
 )
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import (
@@ -156,6 +161,14 @@ CLEAR_OVERRIDES_SERVICE_SCHEMA = vol.Schema(
 )
 
 
+ON_OFF_TOGGLE_SERVICE_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_ENTITY_ID): cv.entity_ids,
+        vol.Optional(CONF_DURATION): cv.positive_int,
+    }
+)
+
+
 class Override(dict):
 
     KNOWN_ATTRS = ["id", "state", "start", "end", "expires", "icon"]
@@ -288,6 +301,73 @@ async def async_setup_platform(
         if update_tasks:
             await asyncio.wait(update_tasks)
 
+    async def async_turn_on_handler(service):
+        target_devices = get_target_devices(service)
+        update_tasks = []
+        for target_device in target_devices:
+            if STATE_ON in target_device.data.known_states:
+                await target_device.async_set_override(
+                    "turn_on_off",
+                    STATE_ON,
+                    None,  # start
+                    None,  # end
+                    service.data.get(CONF_DURATION, 30),
+                    None,  # icon
+                    None,  # extra attributes
+                )
+                update_tasks.append(target_device.async_update_ha_state(True))
+
+        if update_tasks:
+            await asyncio.wait(update_tasks)
+
+    async def async_turn_off_handler(service):
+        target_devices = get_target_devices(service)
+        update_tasks = []
+        for target_device in target_devices:
+            if STATE_OFF in target_device.data.known_states:
+                await target_device.async_set_override(
+                    "turn_on_off",
+                    STATE_OFF,
+                    None,  # start
+                    None,  # end
+                    service.data.get(CONF_DURATION, 30),
+                    None,  # icon
+                    None,  # extra attributes
+                )
+                update_tasks.append(target_device.async_update_ha_state(True))
+
+        if update_tasks:
+            await asyncio.wait(update_tasks)
+
+    async def async_toggle_handler(service):
+        target_devices = get_target_devices(service)
+        update_tasks = []
+        for target_device in target_devices:
+            if (
+                STATE_OFF in target_device.data.known_states
+                and STATE_ON in target_device.data.known_states
+            ):
+                new_state = None
+                if target_device.native_value == STATE_ON:
+                    new_state = STATE_OFF
+                elif target_device.native_value == STATE_OFF:
+                    new_state = STATE_ON
+
+                if new_state is not None:
+                    await target_device.async_set_override(
+                        "turn_on_off",
+                        new_state,
+                        None,  # start
+                        None,  # end
+                        service.data.get(CONF_DURATION, 30),
+                        None,  # icon
+                        None,  # extra attributes
+                    )
+                    update_tasks.append(target_device.async_update_ha_state(True))
+
+        if update_tasks:
+            await asyncio.wait(update_tasks)
+
     hass.services.async_register(
         DOMAIN,
         "recalculate",
@@ -311,6 +391,24 @@ async def async_setup_platform(
         "clear_overrides",
         async_clear_overrides_service_handler,
         schema=CLEAR_OVERRIDES_SERVICE_SCHEMA,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_TURN_ON,
+        async_turn_on_handler,
+        schema=ON_OFF_TOGGLE_SERVICE_SCHEMA,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_TURN_OFF,
+        async_turn_off_handler,
+        schema=ON_OFF_TOGGLE_SERVICE_SCHEMA,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_TOGGLE,
+        async_toggle_handler,
+        schema=ON_OFF_TOGGLE_SERVICE_SCHEMA,
     )
 
     entity = ScheduleSensor(hass, name, data, config)
