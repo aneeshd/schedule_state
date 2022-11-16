@@ -59,9 +59,9 @@ set_override:
       example: mdi:calendar-star
       selector:
         icon:
-    extended_attributes:
-      name: Extended Attributes
-      description: Extended Attributes
+    extra_attributes:
+      name: Extra Attributes
+      description: Extra Attributes
       required: false
       selector:
         object:
