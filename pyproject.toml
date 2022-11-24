@@ -11,7 +11,7 @@ portion = "==2.3.0"
 [tool.poetry.dev-dependencies]
 black = "^22.8.0"
 isort = "^5.10.1"
-flake8 = "^5.0.4"
+flake8 = "^6.0.0"
 holidays = "^0.16"
 pytest = "^7.1.2"
 pytest-cov = "^3.0.0"
