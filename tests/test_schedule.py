@@ -145,6 +145,9 @@ def basic_test(
             # check that reported end time has wrapped
             assert sensor._attributes["friendly_end"] == "05:30:00"
 
+        assert hass.services.has_service(DOMAIN, SERVICE_TURN_ON)
+        # assert hass.services.has_service(HADOMAIN, SERVICE_TURN_ON)
+
         # check toggle - this should be ignored because the schedule does not have on/off states
         with patch(TIME_FUNCTION_PATH, return_value=now) as p:
             await hass.services.async_call(
