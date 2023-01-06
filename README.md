@@ -124,8 +124,8 @@ weekends or [holidays](https://www.home-assistant.io/integrations/workday/).
             - sun
 ```
 
-Keep in mind that the evaluation order of the events is top-to-bottom, and all of them are evaluated. This means 
-that if multiple events match the settings, it's the last one that "wins". For example, if you put this as your 
+Keep in mind that the evaluation order of the events is top-to-bottom, and all of them are evaluated. This means
+that if multiple events match the settings, it's the last one that "wins". For example, if you put this as your
 _last_ event in your configuration, it can be used to override all the events above it, only by using a `binary_sensor`
 (note how there are no `start` and `end` parameters - matching all day if condition passes):
 
@@ -134,7 +134,7 @@ _last_ event in your configuration, it can be used to override all the events ab
         condition:
           - condition: state
             entity_id: binary_sensor.family_at_home
-            state: 'off' 
+            state: 'off'
 ```
 
 Conditions are re-evaluated whenever the state of any entities referenced in the condition change.
@@ -191,6 +191,7 @@ may need to be examined. In a future version, this force-refresh strategy may in
  - input_select
  - input_text
  - sun
+ - zone
 
 
 ## State and Attributes
@@ -215,7 +216,7 @@ These custom attributes are available, in addition to the more common `friendly_
 `start` and `end` return [`datetime.time`](https://docs.python.org/3/library/datetime.html#time-objects) objects,
 allowing templates to access `.hour`, `.minute`, and other attributes of the `time` object.
 
-`friendly_end` will return `'midnight'` if the event ends at the end of the day instead of the less useful 
+`friendly_end` will return `'midnight'` if the event ends at the end of the day instead of the less useful
 `'23:59:59.999999'` returned by `end` in earlier versions.
 
 ### Custom Attributes
@@ -251,6 +252,24 @@ _Tip:_ You can add Home Assistant-specific attributes too. For example if you sc
       unit_of_measurement: "°C"
       state_class: measurement
 ```
+
+## Lovelace Ideas
+
+Here is an example of using a Jinja template in Lovelace to display the current state and the time at which it expires:
+
+![chip_with_template][chip_with_template_img]:
+
+```yaml
+  - type: custom:mushroom-chips-card
+    chips:
+      - type: template
+        entity: sensor.my_schedule
+        content: >-
+          ⏱️ {{ states(config.entity) | title }} until {{
+          state_attr(config.entity, 'friendly_end') }}
+```
+
+This example uses a [Mushroom card with a template chip](https://github.com/piitaya/lovelace-mushroom/blob/main/docs/cards/chips.md#template-chip), but the concept works with any Lovelace card that supports templates.
 
 ## Services
 
@@ -319,8 +338,8 @@ This section provides some notes on each type of development environment, mostly
 
 Use [poetry](https://python-poetry.org/) and the provided `pyproject.toml` to setup the development environment
 
- - `poetry shell`
  - `poetry install`
+ - `poetry shell`
  - `pytest tests`
 
 ### devcontainer
@@ -367,3 +386,4 @@ If you want to contribute to this please read the [Contribution guidelines](CONT
 [issues]: https://github.com/aneeshd/schedule_state/issues
 [schedule1img]: https://raw.githubusercontent.com/aneeshd/schedule_state/main/docs/schedule1.png
 [schedule2img]: https://raw.githubusercontent.com/aneeshd/schedule_state/main/docs/schedule2.png
+[chip_with_template_img]: https://raw.githubusercontent.com/aneeshd/schedule_state/main/docs/chip_with_template.png

@@ -23,6 +23,7 @@ codespell = "^2.2.1"
 
 [tool.poetry.group.dev.dependencies]
 pyupgrade = "^2.38.2"
+pytest-asyncio = "^0.20.3"
 
 [build-system]
 requires = ["poetry-core>=1.2.0"]

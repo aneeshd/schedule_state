@@ -7,7 +7,8 @@
     "input_select",
     "input_text",
     "binary_sensor",
-    "sun"
+    "sun",
+    "zone"
   ],
   "codeowners": [
     "@aneeshd"
@@ -17,10 +18,11 @@
   "documentation": "https://github.com/aneeshd/schedule_state",
   "domain": "schedule_state",
   "iot_class": "calculated",
+  "integration_type": "helper",
   "issue_tracker": "https://github.com/aneeshd/schedule_state/issues",
   "name": "Schedule State",
   "requirements": [
     "portion==2.3.0"
   ],
-  "version": "0.17.0"
+  "version": "0.17.1"
 }
