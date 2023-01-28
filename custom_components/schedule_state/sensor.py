@@ -39,6 +39,7 @@ from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.reload import async_setup_reload_service
 from homeassistant.helpers.restore_state import ExtraStoredData, RestoreEntity
 from homeassistant.helpers.template import Template
+from homeassistant.helpers.trace import trace_path
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from homeassistant.util import dt
 import portion as P
@@ -492,6 +493,7 @@ class ScheduleSensor(SensorEntity, RestoreEntity):
             value = self.data.default_state
         self._state = value
         self._attributes["states"] = self.data.known_states
+        self._attributes["next_state"] = self.data.attributes.get("next_state", None)
         self._attributes["start"] = self.data.attributes.get("start", None)
         self._attributes["end"] = self.data.attributes.get("end", None)
         self._attributes["friendly_start"] = friendly_time(
@@ -640,6 +642,13 @@ class ScheduleSensorData:
         states = {}
         attrs = {k: dict() for k in self._attr_keys}
 
+        # add an interval for the default state and attributes
+        interval = P.closedopen(time.min, time.max)
+        self._add_interval(
+            states, attrs, self.extra_attributes, self.default_state, interval
+        )
+
+        # now process all defined events and overrides
         for event in self.events + self.overrides:
             _LOGGER.debug(f"{self.name}: processing event {event}")
             state = self.evaluate_template(
@@ -725,33 +734,36 @@ class ScheduleSensorData:
 
             # Layer on the new interval to the schedule
             interval = P.closedopen(start, end)
-
-            # process custom attributes
-            self.handle_layers(states, state, interval)
-            for xattr in self._attr_keys:
-                attr_val = event.get(xattr, None)
-                if attr_val is not None:
-                    self.handle_layers(
-                        attrs[xattr],
-                        attr_val,
-                        interval,
-                    )
+            self._add_interval(states, attrs, event, state, interval)
 
         _LOGGER.info(f"{self.name}:\n{pformat(states)}\n{pformat(attrs)}")
         self._states = states
         self._custom_attributes = attrs
         self._refresh_time = dt.as_local(dt_now())
 
-    def handle_layers(self, states, this_attr, interval, event=None):
+    def _add_interval(self, states, attrs, event, state, interval) -> None:
+        self._handle_layers(states, state, interval)
+
+        # process custom attributes
+        for xattr in self._attr_keys:
+            attr_val = event.get(xattr, None)
+            if attr_val is not None:
+                self._handle_layers(
+                    attrs[xattr],
+                    attr_val,
+                    interval,
+                )
+
+    def _handle_layers(self, states, this_attr, interval) -> None:
         for attr in states:
-            self.handle_layer(states, attr, this_attr, interval, event)
+            self._handle_layer(states, attr, this_attr, interval)
 
         if this_attr not in states:
             states[this_attr] = interval
         else:
             states[this_attr] = states[this_attr] | interval
 
-    def handle_layer(self, states, attr, this_attr, interval, event):
+    def _handle_layer(self, states, attr, this_attr, interval) -> None:
         if attr == this_attr:
             return
 
@@ -763,7 +775,7 @@ class ScheduleSensorData:
             states[attr] -= overlap
             _LOGGER.debug(f"{self.name}: ... reducing {attr} to {states[attr]}")
 
-    async def get_start(self, event):
+    async def get_start(self, event) -> time:
         ret = self.evaluate_template(
             event,
             CONF_START,
@@ -778,7 +790,7 @@ class ScheduleSensorData:
             _LOGGER.error(f"{self.name}: FAILED - could not parse '{ret}'")
         return ret
 
-    async def get_end(self, event):
+    async def get_end(self, event) -> time:
         ret = self.evaluate_template(
             event,
             CONF_END,
@@ -842,7 +854,7 @@ class ScheduleSensorData:
         _LOGGER.debug(f"{self.name}: >> {prefix}: {ret} {debugmsg}")
         return ret
 
-    def guess_value(self, value):
+    def guess_value(self, value) -> time | None:
         """After evaluating a template, try to figure out what the resulting value means.
         We are looking for a time value. Dates don't matter."""
 
@@ -913,25 +925,35 @@ class ScheduleSensorData:
             await self.process_events()
             self.force_refresh = None
 
-        # find that state and interval that matches the current time
+        # find the state and interval that matches the current time
         state, interval = self.find_interval(self._states, nu)
-        if state is not None:
-            _LOGGER.debug(f"{self.name}: current state is {state} ({nu})")
-            self.attributes["start"] = interval.lower
-            self.attributes["end"] = interval.upper
-            self.value = state
-            self.attributes["icon"] = self.icon_map.get(state, None)
 
-            if interval.upper == time.max:
-                # If the interval ends at midnight, peek ahead to the next day.
-                # This won't necessarily be right, because the schedule could be recalculated
-                # the next day, but it is arguably more useful.
-                next_state, next_i = self.find_interval(self._states, time.min)
-                if next_state == state and next_i is not None:
-                    self.attributes["end"] = next_i.upper
-        else:
-            _LOGGER.debug(f"{self.name}: using default state ({nu})")
-            self.value = None
+        _LOGGER.debug(f"{self.name}: current state is {state} ({nu})")
+        self.value = state
+        self.attributes["start"] = interval.lower
+        self.attributes["end"] = interval.upper
+        self.attributes["icon"] = self.icon_map.get(state, None)
+
+        look_for_next_state = True
+        next_nu = (datetime.combine(now, interval.upper) + timedelta(seconds=1)).time()
+
+        if interval.upper == time.max:
+            # If the interval ends at midnight, peek ahead to the next day.
+            # This won't necessarily be right, because the schedule could be recalculated
+            # the next day, but it is arguably more useful.
+            next_state, next_i = self.find_interval(self._states, time.min)
+            if next_state == state:
+                self.attributes["end"] = next_i.upper
+                next_nu = (
+                    datetime.combine(now, next_i.upper) + timedelta(seconds=1)
+                ).time()
+            else:
+                self.attributes["next_state"] = next_state
+                look_for_next_state = False
+
+        if look_for_next_state:
+            next_state, next_i = self.find_interval(self._states, next_nu)
+            self.attributes["next_state"] = next_state
 
         # process extra attributes
         for attr in self._attr_keys:
@@ -971,6 +993,7 @@ class ScheduleSensorData:
                             interval,
                         )
 
+        assert False
         return None, None
 
     def set_override(self, id, state, start, end, duration, icon, extra_attributes):
@@ -1128,7 +1151,7 @@ def next_time(now: datetime, t: time) -> datetime:
 
 
 def start_of_next_day(d: datetime) -> datetime:
-    v = d + timedelta(1)
+    v = d + timedelta(days=1)
     return datetime(v.year, v.month, v.day)
 
 
@@ -1174,11 +1197,9 @@ async def _async_process_if(hass, name, if_configs):
         errors = []
         for index, check in enumerate(checks):
             try:
-                # with trace_path(["condition", str(index)]):
-                #     if not check(hass, variables):
-                #         return False
-                if not check(hass, variables):
-                    return False
+                with trace_path(["condition", str(index)]):
+                    if not check(hass, variables):
+                        return False
             except ConditionError as ex:
                 errors.append(
                     ConditionErrorIndex(

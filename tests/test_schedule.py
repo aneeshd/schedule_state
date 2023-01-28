@@ -111,8 +111,10 @@ def basic_test(
             assert sensor._attr_icon == "mdi:run", "Icon is wrong"
         assert sensor._attributes["friendly_start"] == "05:30:00"
         assert sensor._attributes["friendly_end"] == "22:30:00"
+        # "asleep" starts at 22:30 and ends at 5:30
+        assert sensor._attributes["next_state"] == "asleep"
 
-        # add an override
+        # add an override: 20:20 to 20:35
         now += timedelta(minutes=10)  # 20:20
         await set_override(
             hass, f"sensor.{sensorname}", now, "drowsy", duration=15, icon="mdi:cog"
@@ -121,12 +123,14 @@ def basic_test(
         # check that override state is en effect
         now += timedelta(minutes=10)  # 20:30
         await check_state_at_time(hass, sensor, now, "drowsy")
+        assert sensor._attributes["next_state"] == "awake"
         if check_icon:
             assert sensor._attr_icon == "mdi:cog", "Icon was wrong"
 
         # check that override has expired
         now += timedelta(minutes=10)  # 20:40
         await check_state_at_time(hass, sensor, now, "awake")
+        assert sensor._attributes["next_state"] == "asleep"
         if check_icon:
             assert sensor._attr_icon == "mdi:run", "Icon was wrong"
 
@@ -137,6 +141,13 @@ def basic_test(
         )
         if check_icon:
             assert sensor._attr_icon == "mdi:sleep", "Icon was wrong"
+
+        if "asleep1" in overrides:
+            # in this case, the "asleep" state from 0:00 to 5:30 has not been defined due to configuration error
+            assert sensor._attributes["next_state"] == "default"
+        else:
+            # wrapped around to next day
+            assert sensor._attributes["next_state"] == "awake"
 
         if check_midnight:
             assert sensor._attributes["friendly_end"] == "midnight"

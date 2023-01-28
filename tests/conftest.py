@@ -43,7 +43,7 @@ def skip_notifications_fixture():
 # temporary workaround for bug in pytest_homeassistant_custom_component - mock_storage.mock_write_data
 # homeassistant.helpers.storage.Store._write_data does not seem to use the basic json.dumps function,
 # but rather homeassistant.helpers.json.JSONEncoder, which supports datetime
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def hass_storage():
     """Fixture to mock storage."""
     yield {}
