@@ -143,7 +143,7 @@ def basic_test(
             assert sensor._attr_icon == "mdi:sleep", "Icon was wrong"
 
         if "asleep1" in overrides:
-            # in this case, the "asleep" state from 0:00 to 5:30 has not been defined due to configuraion error
+            # in this case, the "asleep" state from 0:00 to 5:30 has not been defined due to configuration error
             assert sensor._attributes["next_state"] == "default"
         else:
             # wrapped around to next day
