@@ -39,9 +39,9 @@ from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.reload import async_setup_reload_service
 from homeassistant.helpers.restore_state import ExtraStoredData, RestoreEntity
 from homeassistant.helpers.template import Template
+from homeassistant.helpers.trace import trace_path
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from homeassistant.util import dt
-from homeassistant.helpers.trace import trace_path
 import portion as P
 import voluptuous as vol
 
@@ -644,7 +644,9 @@ class ScheduleSensorData:
 
         # add an interval for the default state and attributes
         interval = P.closedopen(time.min, time.max)
-        self._add_interval(states, attrs, self.extra_attributes, self.default_state, interval)
+        self._add_interval(
+            states, attrs, self.extra_attributes, self.default_state, interval
+        )
 
         # now process all defined events and overrides
         for event in self.events + self.overrides:
@@ -734,7 +736,7 @@ class ScheduleSensorData:
             interval = P.closedopen(start, end)
             self._add_interval(states, attrs, event, state, interval)
 
-        _LOGGER.info(f"{self.name} {dt.as_local(dt_now())}:\n{pformat(states)}\n{pformat(attrs)}")
+        _LOGGER.info(f"{self.name}:\n{pformat(states)}\n{pformat(attrs)}")
         self._states = states
         self._custom_attributes = attrs
         self._refresh_time = dt.as_local(dt_now())
@@ -933,7 +935,7 @@ class ScheduleSensorData:
         self.attributes["icon"] = self.icon_map.get(state, None)
 
         look_for_next_state = True
-        next_nu = (datetime.combine(now, interval.upper)+timedelta(seconds=1)).time()
+        next_nu = (datetime.combine(now, interval.upper) + timedelta(seconds=1)).time()
 
         if interval.upper == time.max:
             # If the interval ends at midnight, peek ahead to the next day.
@@ -942,7 +944,9 @@ class ScheduleSensorData:
             next_state, next_i = self.find_interval(self._states, time.min)
             if next_state == state:
                 self.attributes["end"] = next_i.upper
-                next_nu = (datetime.combine(now, next_i.upper)+timedelta(seconds=1)).time()
+                next_nu = (
+                    datetime.combine(now, next_i.upper) + timedelta(seconds=1)
+                ).time()
             else:
                 self.attributes["next_state"] = next_state
                 look_for_next_state = False
