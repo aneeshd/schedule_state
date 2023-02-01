@@ -9,7 +9,7 @@ python = "^3.10"
 portion = "==2.3.0"
 
 [tool.poetry.dev-dependencies]
-black = "^22.8.0"
+black = "^23.1.0"
 isort = "^5.10.1"
 flake8 = "^6.0.0"
 holidays = "^0.18"
