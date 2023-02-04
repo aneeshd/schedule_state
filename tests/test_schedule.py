@@ -440,7 +440,6 @@ def schedule_modified_by_template(configfile: str):
     sensorname = configfile.replace("tests/", "").replace(".yaml", "")
 
     async def fn(hass: HomeAssistant) -> None:
-
         mode_switch = "input_boolean.mode"
         assert await setup.async_setup_component(
             hass, input_boolean.DOMAIN, {"input_boolean": {"mode": None}}
@@ -532,7 +531,6 @@ def schedule_modified_by_template_with_error(configfile: str):
     sensorname = configfile.replace("tests/", "").replace(".yaml", "")
 
     async def fn(hass: HomeAssistant) -> None:
-
         mode_switch = "input_boolean.mode"
         assert await setup.async_setup_component(
             hass, input_boolean.DOMAIN, {"input_boolean": {"mode": None}}

@@ -167,7 +167,6 @@ ON_OFF_TOGGLE_SERVICE_SCHEMA = vol.Schema(
 
 
 class Override(dict):
-
     KNOWN_ATTRS = ["id", "state", "start", "end", "expires", "icon"]
 
     def __init__(self, id, state, start, end, expires, icon, extra_attributes):
