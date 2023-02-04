@@ -190,6 +190,10 @@ test_basic_setup_with_errors = basic_test(
 
 test_basic_setup_isoformat2 = basic_test("tests/test009.yaml")
 
+test_basic_setup_offsets = basic_test("tests/test010.yaml")
+
+test_basic_setup_deprecated = basic_test("tests/test012.yaml")
+
 
 async def test_basic_setup_with_error(hass: HomeAssistant) -> None:
     """Test basic schedule_state setup."""

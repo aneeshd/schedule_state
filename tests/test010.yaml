@@ -1,0 +1,17 @@
+- platform: schedule_state
+  name: test010
+  refresh: "1:00:00"
+  icon: mdi:sleep
+  events:
+    - state: "asleep"
+      end: "5:00"
+      end_offset: 30
+    - state: "awake"
+      start: "5:45"
+      start_offset: -15
+      end: "22:35"
+      end_offset: -5
+      icon: mdi:run
+    - state: asleep
+      start: "22:00"
+      start_offset: 30

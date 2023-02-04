@@ -66,6 +66,9 @@ Events have a `start` time and `end` time, and cause the sensor to report a new 
 
 All times are interpreted as belonging to the local timezone.
 
+The start and end times can be adjusted with an offset, in minutes, using the `start_offset`/`end_offset` settings.
+This helps define events such as "x minutes before sunrise", in a simpler way than using complicated templates.
+
 This simple configuration will cause the sensor to report `sleep` or `awake` depending on the time of day.
 You can create automations that trigger on the sensor state. Or, you can use the value of the sensor state as a
 condition in your automations.
@@ -207,6 +210,7 @@ These custom attributes are available, in addition to the more common `friendly_
 | Attribute        | Description                                                               |
 | :--------------- | ------------------------------------------------------------------------- |
 | `states`         | All states known to the sensor |
+| `next_state`     | The state that will occur after the current state |
 | `start`          | Start time of current state |
 | `end`            | End time of current state |
 | `friendly_start` | Start time of current state as a string, formatted using your local conventions |
