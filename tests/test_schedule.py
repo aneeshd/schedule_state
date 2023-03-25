@@ -812,7 +812,6 @@ async def test_extra_attributes(hass: HomeAssistant):
 
 async def test_issue92(hass: HomeAssistant):
     configfile = "tests/../.devcontainer/issues/issue92.yaml"
-    sensorname = "light_schedule"
 
     await setup.async_setup_component(
         hass,
@@ -831,7 +830,7 @@ async def test_issue92(hass: HomeAssistant):
     with open(configfile) as f:
         config = yaml.safe_load(f)
 
-    with patch(DATE_FUNCTION_PATH, return_value=date(2021, 11, 19)) as dp:
+    with patch(DATE_FUNCTION_PATH, return_value=date(2021, 11, 19)):
         now = make_testtime(4, 0)
         with patch(TIME_FUNCTION_PATH, return_value=now) as p:
             await setup_test_entities(
@@ -847,7 +846,6 @@ async def test_issue92(hass: HomeAssistant):
         now = make_testtime(21, 47)
         with patch(TIME_FUNCTION_PATH, return_value=now) as p:
             await sensor.async_update_ha_state(force_refresh=True)
-
 
         now = make_testtime(5, 30)
         with patch(TIME_FUNCTION_PATH, return_value=now) as p:
