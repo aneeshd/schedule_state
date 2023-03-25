@@ -1,0 +1,124 @@
+
+# Light scheduler
+- platform: schedule_state
+  name: Light schedule
+  refresh: "6:00"
+  default_state: day
+  icon: mdi:calendar-check
+  error_icon: mdi:calendar-alert
+  minutes_to_refresh_on_error: 5
+  extra_attributes:
+    light_main: "off"
+    light_subtle: "off"
+    light_bedroom: "off"
+    light_sensor: "full"
+    light_default_brightness: "full"
+  events:
+    - state: day
+      light_main: "off"
+      light_subtle: "off"
+      light_bedroom: "off"
+      light_sensor: "full"
+      light_default_brightness: "full"            
+    - start: "15:00"
+      condition:
+        condition: or
+        conditions:
+          - condition: numeric_state
+            entity_id: sun.sun
+            value_template: "{{ state_attr('sun.sun', 'elevation') }}"
+            below: 4.0
+      state: evening
+      light_main: "full"
+      light_subtle: "full"
+      light_bedroom: "full"
+      light_sensor: "full"
+      light_default_brightness: "full"
+    - start: "22:00"
+      state: wind_down
+      condition:
+        condition: or
+        conditions:
+          - condition: state
+            entity_id: light.bedroom_bedside_lamps
+            state: 'off'                 
+      light_main: "off"
+      light_subtle: "dim"
+      light_bedroom: "off"
+      light_sensor: "dim"
+      light_default_brightness: "dim"  
+    - start: "22:00"
+      state: wind_down
+      condition:
+        condition: or
+        conditions:
+          - condition: state
+            entity_id: light.bedroom_bedside_lamps
+            state: 'on'           
+      light_main: "dim"
+      light_subtle: "dim"
+      light_bedroom: "dim"
+      light_sensor: "full"
+      light_default_brightness: "full"
+    - start: "23:30"
+      state: night
+      light_main: "off"
+      light_subtle: "off"
+      light_bedroom: "off"
+      light_sensor: "dim"
+      light_default_brightness: "dim"        
+    - end: "06:00"
+      state: night
+      condition:
+        condition: or
+        conditions:
+          - condition: state
+            entity_id: binary_sensor.workday_sensor
+            state: 'on'
+      light_main: "off"
+      light_subtle: "off"
+      light_bedroom: "off"
+      light_sensor: "dim"
+      light_default_brightness: "dim"                  
+    - end: "07:00"
+      state: night
+      condition:
+        condition: or
+        conditions:
+          - condition: state
+            entity_id: binary_sensor.workday_sensor
+            state: 'off'
+      light_main: "off"
+      light_subtle: "off"
+      light_bedroom: "off"
+      light_sensor: "dim"
+      light_default_brightness: "dim"
+    - start: "06:00"
+      end: "08:00"
+      state: morning
+      condition:
+        condition: or
+        conditions:
+          - condition: state
+            entity_id: binary_sensor.workday_sensor
+            state: 'on'
+      light_main: "off"
+      light_subtle: "dim"
+      light_bedroom: "off"
+      light_sensor: "full"
+      light_default_brightness: "full"                  
+    - start: "07:00"
+      end: "09:00"
+      state: morning
+      condition:
+        condition: or
+        conditions:
+          - condition: state
+            entity_id: binary_sensor.workday_sensor
+            state: 'off'
+      light_main: "off"
+      light_subtle: "dim"
+      light_bedroom: "off"
+      light_sensor: "full"
+      light_default_brightness: "full"             
+
