@@ -749,10 +749,32 @@ class ScheduleSensorData:
         # process custom attributes
         for xattr in self._attr_keys:
             attr_val = event.get(xattr, None)
+
+            # figure out the attribute value
+            val = None
             if attr_val is not None:
+                attr_eval = self.evaluate_template(
+                    {xattr: attr_val},
+                    xattr,
+                    default=None,
+                )
+                if attr_eval.success:
+                    val = attr_eval.result
+
+            if val is None:
+                # no value specified or template evaluation failed; get the default value
+                # the default here if the template evaluation fails is the "template" itself - YMMV
+                dv = self.extra_attributes[xattr]
+                val = self.evaluate_template(
+                    {xattr: dv},
+                    xattr,
+                    default=dv,
+                ).result
+
+            if val is not None:
                 self._handle_layers(
                     attrs[xattr],
-                    attr_val,
+                    val,
                     interval,
                 )
 
@@ -976,31 +998,7 @@ class ScheduleSensorData:
         # process extra attributes
         for attr in self._attr_keys:
             # find an event in which the attribute is defined
-            attr_val, _ = self.find_interval(self._custom_attributes[attr], nu)
-
-            # figure out the attribute value
-            val = None
-            if attr_val is not None:
-                attr_eval = self.evaluate_template(
-                    {attr: attr_val},
-                    attr,
-                    track_entities=False,
-                    default=None,
-                )
-                if attr_eval.success:
-                    val = attr_eval.result
-
-            if val is None:
-                # no value specified or template evaluation failed; get the default value
-                # the default here if the template evaluation fails is the "template" itself - YMMV
-                dv = self.extra_attributes[attr]
-                val = self.evaluate_template(
-                    {attr: dv},
-                    attr,
-                    track_entities=False,
-                    default=dv,
-                ).result
-
+            val, _ = self.find_interval(self._custom_attributes[attr], nu)
             self.attributes[attr] = val
 
     def find_interval(self, states, nu):

@@ -797,7 +797,8 @@ async def test_extra_attributes(hass: HomeAssistant):
     now += timedelta(minutes=5)  # 23:30
     with patch(TIME_FUNCTION_PATH, return_value=now) as p:
         await sensor.async_update_ha_state(force_refresh=True)
-        assert sensor._attributes["swing_mode"] == "horizontal"
+        # swing_mode was not provided in the override, so the default value should be used
+        assert sensor._attributes["swing_mode"] == "default-off"
         assert sensor._attributes["fan_mode"] == "override"
         assert "bogus_attribute" not in sensor._attributes
 
@@ -807,6 +808,58 @@ async def test_extra_attributes(hass: HomeAssistant):
         await sensor.async_update_ha_state(force_refresh=True)
         assert sensor._attributes["swing_mode"] == "horizontal"
         assert sensor._attributes["fan_mode"] == "mid"
+
+
+async def test_issue92(hass: HomeAssistant):
+    configfile = "tests/../.devcontainer/issues/issue92.yaml"
+    sensorname = "light_schedule"
+
+    await setup.async_setup_component(
+        hass,
+        "binary_sensor",
+        {
+            "binary_sensor": {
+                "platform": "workday",
+                "country": "CA",
+                # "province": "ON",
+            }
+        },
+    )
+    await hass.async_block_till_done()
+    # await sensor.async_update_ha_state(force_refresh=True)
+
+    with open(configfile) as f:
+        config = yaml.safe_load(f)
+
+    with patch(DATE_FUNCTION_PATH, return_value=date(2021, 11, 19)) as dp:
+        now = make_testtime(4, 0)
+        with patch(TIME_FUNCTION_PATH, return_value=now) as p:
+            await setup_test_entities(
+                hass,
+                config[0],
+            )
+
+            assert p.called, "Time patch was not applied"
+            assert p.return_value == now, "Time patch was wrong"
+
+            sensor = [e for e in hass.data["sensor"].entities][-1]
+
+        now = make_testtime(21, 47)
+        with patch(TIME_FUNCTION_PATH, return_value=now) as p:
+            await sensor.async_update_ha_state(force_refresh=True)
+
+
+        now = make_testtime(5, 30)
+        with patch(TIME_FUNCTION_PATH, return_value=now) as p:
+            # in issue 92, an assert was being thrown in find_interval
+            # HA squelches the assert, so pytest does not fail
+            # the test here fails if the assert is thrown, because the sensor value does not get updated
+            await sensor.async_update_ha_state(force_refresh=True)
+            assert sensor._attributes["light_main"] == "off"
+            assert sensor._attributes["light_subtle"] == "off"
+            assert sensor._attributes["light_bedroom"] == "off"
+            assert sensor._attributes["light_sensor"] == "dim"
+            assert sensor._attributes["light_default_brightness"] == "dim"
 
 
 async def check_state_at_time(hass, sensor, now, value):
