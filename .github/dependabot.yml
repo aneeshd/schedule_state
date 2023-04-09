@@ -10,3 +10,10 @@ updates:
     schedule:
       interval: "daily"
     open-pull-requests-limit: 10
+
+  - package-ecosystem: "github-actions"
+    # Workflow files stored in the
+    # default location of `.github/workflows`
+    directory: "/"
+    schedule:
+      interval: "weekly"
