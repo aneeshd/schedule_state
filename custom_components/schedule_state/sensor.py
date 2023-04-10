@@ -1179,16 +1179,7 @@ def localtime_from_time(tme: time) -> time:
 
 def datetime_from_time(tme: time) -> datetime:
     date = dt_now()
-    date = datetime(
-        date.year,
-        date.month,
-        date.day,
-        tme.hour,
-        tme.minute,
-        tme.second,
-        tme.microsecond,
-        date.tzinfo,
-    )
+    date = datetime.combine(date, tme, date.tzinfo)
     return dt.as_local(date)
 
 
