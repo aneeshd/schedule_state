@@ -362,6 +362,12 @@ async def test_overrides(hass: HomeAssistant) -> None:
     )
     await check_state_at_time(hass, sensor, now, "feisty")
 
+    # override that ends the next day, starting from now
+    await set_override(
+        hass, "sensor.test000", now, "not-ignored", end="2:00"
+    )
+    await check_state_at_time(hass, sensor, now, "not-ignored")
+
 
 async def test_overrides_with_id(hass: HomeAssistant) -> None:
     """Test schedule_state overrides with ids."""
