@@ -2,8 +2,12 @@
 name: PyTest
 
 on:
-  pull_request:
   push:
+    branches:
+    - master
+  pull_request:
+    branches:
+    - master
 
 jobs:
   test:
