@@ -901,23 +901,21 @@ files = [
 
 [[package]]
 name = "holidays"
-version = "0.22"
+version = "0.23"
 description = "Generate and work with holidays in Python"
 category = "dev"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "holidays-0.22-py3-none-any.whl", hash = "sha256:3cd50fd2f96789e89430d20ecc8ab166699a2d512ccf2764b78dead89b570258"},
-    {file = "holidays-0.22.tar.gz", hash = "sha256:84f1efbc576255286e1c14462709d560a311cf98a47c3dafb9a7494525d1155a"},
+    {file = "holidays-0.23-py3-none-any.whl", hash = "sha256:4cb1f1979227eaa8233b079af144f426111183f961c99d4c65527cda3a4b905e"},
+    {file = "holidays-0.23.tar.gz", hash = "sha256:bceb152e4ab34e4b7548e9b8f7854b86637c96c499c1e07c11747abc3e0dba7b"},
 ]
 
 [package.dependencies]
 convertdate = ">=2.3.0"
 hijri-converter = "*"
 korean-lunar-calendar = "*"
-PyMeeus = "*"
 python-dateutil = "*"
-tzdata = {version = "*", markers = "os_name == \"nt\""}
 
 [[package]]
 name = "home-assistant-bluetooth"
@@ -2383,18 +2381,6 @@ files = [
 ]
 
 [[package]]
-name = "tzdata"
-version = "2023.3"
-description = "Provider of IANA time zone data"
-category = "dev"
-optional = false
-python-versions = ">=2"
-files = [
-    {file = "tzdata-2023.3-py2.py3-none-any.whl", hash = "sha256:7e65763eef3120314099b6939b5546db7adce1e7d6f2e179e3df563c70511eda"},
-    {file = "tzdata-2023.3.tar.gz", hash = "sha256:11ef1e08e54acb0d4f95bdb1be05da659673de4acbd21bf9c69e94cc5e907a3a"},
-]
-
-[[package]]
 name = "urllib3"
 version = "1.26.14"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
@@ -2514,4 +2500,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "dd4d8fd42bde490881c506899f132c38d0d24e86b4a10aa5df28084658d56702"
+content-hash = "0e5a9a32389b973a1f5ff7bf3a4bfcb4588e37d1d67b12f4f4a87c8ede0f0322"
