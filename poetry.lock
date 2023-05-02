@@ -486,26 +486,6 @@ files = [
 ]
 
 [[package]]
-name = "convertdate"
-version = "2.4.0"
-description = "Converts between Gregorian dates and other calendar systems"
-category = "dev"
-optional = false
-python-versions = "<4,>=3.7"
-files = [
-    {file = "convertdate-2.4.0-py3-none-any.whl", hash = "sha256:fcffe3a67522172648cf03b0c3757cfd079726fe5ae04ce29989ad3958039e4e"},
-    {file = "convertdate-2.4.0.tar.gz", hash = "sha256:770c6b2195544d3e451e230b3f1c9b121ed02680b877f896306a04cf6f26b48f"},
-]
-
-[package.dependencies]
-pymeeus = ">=0.3.13,<=1"
-
-[package.extras]
-dev = ["black", "build", "isort", "pylint"]
-docs = ["myst-parser", "sphinx", "sphinx-rtd-theme"]
-tests = ["coverage"]
-
-[[package]]
 name = "coverage"
 version = "6.4.4"
 description = "Code coverage measurement for Python"
@@ -901,23 +881,20 @@ files = [
 
 [[package]]
 name = "holidays"
-version = "0.22"
+version = "0.24"
 description = "Generate and work with holidays in Python"
 category = "dev"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "holidays-0.22-py3-none-any.whl", hash = "sha256:3cd50fd2f96789e89430d20ecc8ab166699a2d512ccf2764b78dead89b570258"},
-    {file = "holidays-0.22.tar.gz", hash = "sha256:84f1efbc576255286e1c14462709d560a311cf98a47c3dafb9a7494525d1155a"},
+    {file = "holidays-0.24-py3-none-any.whl", hash = "sha256:7418c0ef1f5274849bc1e385e62f5a470b41839f8b45a798a087311b7966f03f"},
+    {file = "holidays-0.24.tar.gz", hash = "sha256:484a1104b7a4248329d371d24dbae2289222c037194b4132c00d2076778936bd"},
 ]
 
 [package.dependencies]
-convertdate = ">=2.3.0"
 hijri-converter = "*"
 korean-lunar-calendar = "*"
-PyMeeus = "*"
 python-dateutil = "*"
-tzdata = {version = "*", markers = "os_name == \"nt\""}
 
 [[package]]
 name = "home-assistant-bluetooth"
@@ -1670,17 +1647,6 @@ docs = ["sphinx (>=4.5.0,<5.0.0)", "sphinx-rtd-theme", "zope.interface"]
 tests = ["coverage[toml] (==5.0.4)", "pytest (>=6.0.0,<7.0.0)"]
 
 [[package]]
-name = "pymeeus"
-version = "0.5.12"
-description = "Python implementation of Jean Meeus astronomical routines"
-category = "dev"
-optional = false
-python-versions = "*"
-files = [
-    {file = "PyMeeus-0.5.12.tar.gz", hash = "sha256:548f7186bd8b96cbc069cf649a8e8e377dce49ac74486709849fe63a99cad684"},
-]
-
-[[package]]
 name = "pyobjc-core"
 version = "8.5.1"
 description = "Python<->ObjC Interoperability Module"
@@ -2383,18 +2349,6 @@ files = [
 ]
 
 [[package]]
-name = "tzdata"
-version = "2023.3"
-description = "Provider of IANA time zone data"
-category = "dev"
-optional = false
-python-versions = ">=2"
-files = [
-    {file = "tzdata-2023.3-py2.py3-none-any.whl", hash = "sha256:7e65763eef3120314099b6939b5546db7adce1e7d6f2e179e3df563c70511eda"},
-    {file = "tzdata-2023.3.tar.gz", hash = "sha256:11ef1e08e54acb0d4f95bdb1be05da659673de4acbd21bf9c69e94cc5e907a3a"},
-]
-
-[[package]]
 name = "urllib3"
 version = "1.26.14"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
@@ -2514,4 +2468,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "dd4d8fd42bde490881c506899f132c38d0d24e86b4a10aa5df28084658d56702"
+content-hash = "cb21408027129d973aba4255a6c3e1792aea88b960097628fbaf32b93913db15"
