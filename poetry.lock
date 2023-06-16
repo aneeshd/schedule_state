@@ -840,17 +840,16 @@ files = [
 
 [[package]]
 name = "holidays"
-version = "0.25"
+version = "0.26"
 description = "Generate and work with holidays in Python"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "holidays-0.25-py3-none-any.whl", hash = "sha256:ad9b31e5175b4c5b601e06793633c2b0fff53179cf56ad4de1aea463c3f2679c"},
-    {file = "holidays-0.25.tar.gz", hash = "sha256:64d85ae60dd05715cdf3483e60ece93ae254e4f4fac23f1f83c6b0f04ae35508"},
+    {file = "holidays-0.26-py3-none-any.whl", hash = "sha256:3501bbae491690a98d393c1894c2c7298b9cda51c12db75eb00bdeb6f16d058b"},
+    {file = "holidays-0.26.tar.gz", hash = "sha256:e3f8411a9754c8fc717d3802bf6e6312684fe63432d060c05681ac40704a8915"},
 ]
 
 [package.dependencies]
-korean-lunar-calendar = "*"
 python-dateutil = "*"
 
 [[package]]
@@ -1015,17 +1014,6 @@ MarkupSafe = ">=2.0"
 
 [package.extras]
 i18n = ["Babel (>=2.7)"]
-
-[[package]]
-name = "korean-lunar-calendar"
-version = "0.3.1"
-description = "Korean Lunar Calendar"
-optional = false
-python-versions = "*"
-files = [
-    {file = "korean_lunar_calendar-0.3.1-py3-none-any.whl", hash = "sha256:392757135c492c4f42a604e6038042953c35c6f449dda5f27e3f86a7f9c943e5"},
-    {file = "korean_lunar_calendar-0.3.1.tar.gz", hash = "sha256:eb2c485124a061016926bdea6d89efdf9b9fdbf16db55895b6cf1e5bec17b857"},
-]
 
 [[package]]
 name = "lru-dict"
@@ -2353,4 +2341,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "6c32556f49c6c7b9bfd6a98b699fc783f8fe32ddedcf1585d4902abf6a5fdb41"
+content-hash = "9edda0451ace00b658e8b73bd6274014ecc528427b563983982204b4896cf17b"
