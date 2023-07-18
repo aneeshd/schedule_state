@@ -11,7 +11,7 @@ portion = "==2.4.0"
 [tool.poetry.group.dev.dependencies]
 isort = "^5.10.1"
 flake8 = "^6.0.0"
-holidays = "^0.26"
+holidays = "^0.29"
 pytest = "^7.1.2"
 pytest-cov = "^3.0.0"
 homeassistant = "^2022.9.5"
