@@ -1891,13 +1891,13 @@ files = [
 
 [[package]]
 name = "pyupgrade"
-version = "3.6.0"
+version = "3.9.0"
 description = "A tool to automatically upgrade syntax for newer versions."
 optional = false
-python-versions = ">=3.8"
+python-versions = ">=3.8.1"
 files = [
-    {file = "pyupgrade-3.6.0-py2.py3-none-any.whl", hash = "sha256:747d7eb64534c88d775df67b6e4134680d7eed942495193c053240b329693d2d"},
-    {file = "pyupgrade-3.6.0.tar.gz", hash = "sha256:6e888c168f0684babdb6b820a2d70138435eaf43402b42291c789091dd247fba"},
+    {file = "pyupgrade-3.9.0-py2.py3-none-any.whl", hash = "sha256:1807e324a1432f05a830bc1847095c90b604c91de66237fff55cb98b99d4da10"},
+    {file = "pyupgrade-3.9.0.tar.gz", hash = "sha256:a4c7132f4614f7acbacb756275c8a7881ad418f8a1c6ff6512c30dcf4c98f500"},
 ]
 
 [package.dependencies]
@@ -2338,4 +2338,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "1539001a4ff0749eeb35e411ea74b5af802b4238d076ac9317799a7dbd1c3ec8"
+content-hash = "b9c8ccfae54fd654146df4719e2e7eee8afbe4dbd892bc3a7a6657d77b8c64ac"
