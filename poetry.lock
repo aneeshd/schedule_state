@@ -837,13 +837,13 @@ files = [
 
 [[package]]
 name = "holidays"
-version = "0.29"
+version = "0.30"
 description = "Generate and work with holidays in Python"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "holidays-0.29-py3-none-any.whl", hash = "sha256:0965f763172b7bf4931e6378b93bae77a2c8bd112ce4c6b483b832a80498ab39"},
-    {file = "holidays-0.29.tar.gz", hash = "sha256:e8219df1570dd92f17244ff7da93f57630b0dd2fedf86e86b4110f07825b0a67"},
+    {file = "holidays-0.30-py3-none-any.whl", hash = "sha256:ee4fc4b0476d10b59629e6690d6f480667c06b360172d6ea659c0a3e735bc5ec"},
+    {file = "holidays-0.30.tar.gz", hash = "sha256:eb40aae8236fa4ac7fe862dbcec3b10311c94c8310cea9e77e6b1aae63c312d4"},
 ]
 
 [package.dependencies]
@@ -2338,4 +2338,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "b49dee60c3ffa6b69e984b42eb51677cbde201c495d63ea28e8f267d2973809a"
+content-hash = "2fee5682fc5fa75b1ceefbbf5fa045ed2d703039a2444cf58f0690ad5f6cea3f"
