@@ -1671,13 +1671,13 @@ pytest = "*"
 
 [[package]]
 name = "pytest-asyncio"
-version = "0.21.0"
+version = "0.22.0"
 description = "Pytest support for asyncio"
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.8"
 files = [
-    {file = "pytest-asyncio-0.21.0.tar.gz", hash = "sha256:2b38a496aef56f56b0e87557ec313e11e1ab9276fc3863f6a7be0f1d0e415e1b"},
-    {file = "pytest_asyncio-0.21.0-py3-none-any.whl", hash = "sha256:f2b3366b7cd501a4056858bd39349d5af19742aed2d81660b7998b6341c7eb9c"},
+    {file = "pytest-asyncio-0.22.0.tar.gz", hash = "sha256:01da1bf94ff0b969cc8d760104f7c1011903d0d658bdaef0bbae769660a7fbc4"},
+    {file = "pytest_asyncio-0.22.0-py3-none-any.whl", hash = "sha256:c09905acb3b79827aace4c67fe15097daea1b363c00c8236875395414914bad3"},
 ]
 
 [package.dependencies]
@@ -2339,4 +2339,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "c499e99ff9fd665a274933ac9b47e77b2c10da5670cdf29504cd07a899cc3ccc"
+content-hash = "bd899de89c3e1dc842fd16f6e337c429ff039e56ce32b2ca40a38395c1f65740"
