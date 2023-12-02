@@ -385,7 +385,7 @@ If you want to contribute to this please read the [Contribution guidelines](CONT
 [forum]: https://community.home-assistant.io/
 [license-shield]: https://img.shields.io/github/license/aneeshd/schedule_state
 [maintenance-shield]: https://img.shields.io/badge/maintainer-aneeshd-blue.svg
-[releases-shield]: https://img.shields.io/github/release/custom-components/blueprint.svg
+[releases-shield]: https://img.shields.io/github/v/release/aneeshd/schedule_state.svg
 [releases]: https://github.com/aneeshd/schedule_state/releases
 [issues]: https://github.com/aneeshd/schedule_state/issues
 [schedule1img]: https://raw.githubusercontent.com/aneeshd/schedule_state/main/docs/schedule1.png

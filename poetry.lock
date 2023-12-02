@@ -951,20 +951,6 @@ files = [
 ]
 
 [[package]]
-name = "holidays"
-version = "0.37"
-description = "Generate and work with holidays in Python"
-optional = false
-python-versions = ">=3.8"
-files = [
-    {file = "holidays-0.37-py3-none-any.whl", hash = "sha256:5b8ff8c94c06e3b225762d495e51b8e51205d332f8ad092aab809c4bffa8d123"},
-    {file = "holidays-0.37.tar.gz", hash = "sha256:712df71a8d97b04554fa1c9208d219fbf174bad2864263bef24c6dcfa1ded6ff"},
-]
-
-[package.dependencies]
-python-dateutil = "*"
-
-[[package]]
 name = "home-assistant-bluetooth"
 version = "1.10.4"
 description = "Home Assistant Bluetooth Models and Helpers"
@@ -2061,20 +2047,6 @@ files = [
 ]
 
 [[package]]
-name = "pyupgrade"
-version = "3.15.0"
-description = "A tool to automatically upgrade syntax for newer versions."
-optional = false
-python-versions = ">=3.8.1"
-files = [
-    {file = "pyupgrade-3.15.0-py2.py3-none-any.whl", hash = "sha256:8dc8ebfaed43566e2c65994162795017c7db11f531558a74bc8aa077907bc305"},
-    {file = "pyupgrade-3.15.0.tar.gz", hash = "sha256:a7fde381060d7c224f55aef7a30fae5ac93bbc428367d27e70a603bc2acd4f00"},
-]
-
-[package.dependencies]
-tokenize-rt = ">=5.2.0"
-
-[[package]]
 name = "pyyaml"
 version = "6.0.1"
 description = "YAML parser and emitter for Python"
@@ -2312,13 +2284,13 @@ pytest = ">=7.0.0,<8.0.0"
 
 [[package]]
 name = "termcolor"
-version = "2.3.0"
+version = "2.4.0"
 description = "ANSI color formatting for output in terminal"
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.8"
 files = [
-    {file = "termcolor-2.3.0-py3-none-any.whl", hash = "sha256:3afb05607b89aed0ffe25202399ee0867ad4d3cb4180d98aaf8eefa6a5f7d475"},
-    {file = "termcolor-2.3.0.tar.gz", hash = "sha256:b5b08f68937f138fe92f6c089b99f1e2da0ae56c52b78bf7075fd95420fd9a5a"},
+    {file = "termcolor-2.4.0-py3-none-any.whl", hash = "sha256:9297c0df9c99445c2412e832e882a7884038a25617c60cea2ad69488d4040d63"},
+    {file = "termcolor-2.4.0.tar.gz", hash = "sha256:aab9e56047c8ac41ed798fa36d892a37aca6b3e9159f3e0c24bc64a9b3ac7b7a"},
 ]
 
 [package.extras]
@@ -2333,17 +2305,6 @@ python-versions = "*"
 files = [
     {file = "text-unidecode-1.3.tar.gz", hash = "sha256:bad6603bb14d279193107714b288be206cac565dfa49aa5b105294dd5c4aab93"},
     {file = "text_unidecode-1.3-py2.py3-none-any.whl", hash = "sha256:1311f10e8b895935241623731c2ba64f4c455287888b18189350b67134a822e8"},
-]
-
-[[package]]
-name = "tokenize-rt"
-version = "5.2.0"
-description = "A wrapper around the stdlib `tokenize` which roundtrips."
-optional = false
-python-versions = ">=3.8"
-files = [
-    {file = "tokenize_rt-5.2.0-py2.py3-none-any.whl", hash = "sha256:b79d41a65cfec71285433511b50271b05da3584a1da144a0752e9c621a285289"},
-    {file = "tokenize_rt-5.2.0.tar.gz", hash = "sha256:9fe80f8a5c1edad2d3ede0f37481cc0cc1538a2f442c9c2f9e4feacd2792d054"},
 ]
 
 [[package]]
@@ -2544,4 +2505,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11,<3.13"
-content-hash = "90e2fd8d81ab3b6041abb81e3b983b86cd6405f1dc1aba312be037ca5ad60255"
+content-hash = "691b91a5f344c797b9130f47ce72707e6c5ae4fee201f0bd6291d7c4e6740841"
