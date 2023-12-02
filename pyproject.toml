@@ -29,8 +29,5 @@ build-backend = "poetry.core.masonry.api"
 
 # see:
 #   https://github.com/MatthewFlamm/pytest-homeassistant-custom-component/discussions/160
-#   https://github.com/Shulyaka/xbee_humidifier/blob/b4c736f9e4eab958d48248959eba2a15163eb955/setup.cfg
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-#testpaths = tests
-#norecursedirs = .git
