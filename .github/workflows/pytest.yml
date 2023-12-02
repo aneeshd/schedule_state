@@ -67,4 +67,3 @@ jobs:
         run: |
           source .venv/bin/activate
           pytest -v
-          coverage report
