@@ -260,8 +260,7 @@ async def async_setup_services(hass: HomeAssistant):
             await target_device.async_recalculate()
             update_tasks.append(target_device.async_update_ha_state(True))
 
-        if update_tasks:
-            await asyncio.wait(update_tasks)
+        _ = [await asyncio.create_task(coro) for coro in update_tasks]
 
     async def async_set_override_service_handler(service):
         target_devices = get_target_devices(service)
@@ -278,8 +277,7 @@ async def async_setup_services(hass: HomeAssistant):
             )
             update_tasks.append(target_device.async_update_ha_state(True))
 
-        if update_tasks:
-            await asyncio.wait(update_tasks)
+        _ = [await asyncio.create_task(coro) for coro in update_tasks]
 
     async def async_remove_override_service_handler(service):
         target_devices = get_target_devices(service)
@@ -290,8 +288,7 @@ async def async_setup_services(hass: HomeAssistant):
             )
             update_tasks.append(target_device.async_update_ha_state(True))
 
-        if update_tasks:
-            await asyncio.wait(update_tasks)
+        _ = [await asyncio.create_task(coro) for coro in update_tasks]
 
     async def async_clear_overrides_service_handler(service):
         target_devices = get_target_devices(service)
@@ -300,8 +297,7 @@ async def async_setup_services(hass: HomeAssistant):
             await target_device.async_clear_overrides()
             update_tasks.append(target_device.async_update_ha_state(True))
 
-        if update_tasks:
-            await asyncio.wait(update_tasks)
+        _ = [await asyncio.create_task(coro) for coro in update_tasks]
 
     async def async_turn_on_handler(service):
         target_devices = get_target_devices(service)
@@ -319,8 +315,7 @@ async def async_setup_services(hass: HomeAssistant):
                 )
                 update_tasks.append(target_device.async_update_ha_state(True))
 
-        if update_tasks:
-            await asyncio.wait(update_tasks)
+        _ = [await asyncio.create_task(coro) for coro in update_tasks]
 
     async def async_turn_off_handler(service):
         target_devices = get_target_devices(service)
@@ -338,8 +333,7 @@ async def async_setup_services(hass: HomeAssistant):
                 )
                 update_tasks.append(target_device.async_update_ha_state(True))
 
-        if update_tasks:
-            await asyncio.wait(update_tasks)
+        _ = [await asyncio.create_task(coro) for coro in update_tasks]
 
     async def async_toggle_handler(service):
         target_devices = get_target_devices(service)
@@ -367,8 +361,7 @@ async def async_setup_services(hass: HomeAssistant):
                     )
                     update_tasks.append(target_device.async_update_ha_state(True))
 
-        if update_tasks:
-            await asyncio.wait(update_tasks)
+        _ = [await asyncio.create_task(coro) for coro in update_tasks]
 
     hass.services.async_register(
         DOMAIN,

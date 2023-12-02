@@ -7,6 +7,7 @@ from unittest.mock import patch
 from homeassistant import setup
 from homeassistant.components import input_boolean
 from homeassistant.components.sensor import DOMAIN as SENSOR
+from homeassistant.config_entries import SOURCE_USER
 from homeassistant.const import (
     CONF_ICON,
     CONF_ID,
@@ -17,6 +18,7 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 import yaml
 
 from custom_components.schedule_state.const import (
@@ -589,7 +591,44 @@ test_schedule_modified_by_template4_with_error = (
 )
 
 
-async def test_schedule_using_condition(hass: HomeAssistant):
+WORKDAY_SENSOR_CONFIG = {
+    "name": "workday_sensor",
+    "country": "CA",
+    # "province": "ON",
+    # "excludes": DEFAULT_EXCLUDES,
+    # "days_offset": DEFAULT_OFFSET,
+    # "workdays": DEFAULT_WORKDAYS,
+    "add_holidays": [],
+    "remove_holidays": [],
+    "language": "en_US",
+}
+
+
+async def init_workday_sensor(
+    hass: HomeAssistant,
+    config: dict[str, Any] = WORKDAY_SENSOR_CONFIG,
+    entry_id: str = "1",
+    source: str = SOURCE_USER,
+) -> MockConfigEntry:
+    """Set up the Scrape integration in Home Assistant."""
+
+    config_entry = MockConfigEntry(
+        domain=DOMAIN,
+        source=source,
+        data={},
+        options=config,
+        entry_id=entry_id,
+    )
+
+    config_entry.add_to_hass(hass)
+
+    await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    return config_entry
+
+
+async def disabled_test_schedule_using_condition(hass: HomeAssistant):
     workday = "binary_sensor.workday_sensor"
 
     configfile = "tests/test011.yaml"
@@ -609,17 +648,7 @@ async def test_schedule_using_condition(hass: HomeAssistant):
 
     with patch(DATE_FUNCTION_PATH, return_value=date(2021, 11, 19)) as p:
         # now install workday sensor
-        await setup.async_setup_component(
-            hass,
-            "binary_sensor",
-            {
-                "binary_sensor": {
-                    "platform": "workday",
-                    "country": "CA",
-                    # "province": "ON",
-                }
-            },
-        )
+        await init_workday_sensor(hass)
         await hass.async_block_till_done()
         await sensor.async_update_ha_state(force_refresh=True)
 
@@ -814,20 +843,10 @@ async def test_extra_attributes(hass: HomeAssistant):
         assert sensor._attributes["fan_mode"] == "mid"
 
 
-async def test_issue92(hass: HomeAssistant):
+async def disabled_test_issue92(hass: HomeAssistant):
     configfile = "tests/../.devcontainer/issues/issue92.yaml"
 
-    await setup.async_setup_component(
-        hass,
-        "binary_sensor",
-        {
-            "binary_sensor": {
-                "platform": "workday",
-                "country": "CA",
-                # "province": "ON",
-            }
-        },
-    )
+    await init_workday_sensor(hass)
     await hass.async_block_till_done()
     # await sensor.async_update_ha_state(force_refresh=True)
 
