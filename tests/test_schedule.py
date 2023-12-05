@@ -4,9 +4,11 @@ import logging
 from typing import Any
 from unittest.mock import patch
 
+from freezegun.api import FrozenDateTimeFactory
 from homeassistant import setup
 from homeassistant.components import input_boolean
 from homeassistant.components.sensor import DOMAIN as SENSOR
+from homeassistant.components.workday import const as workday_const
 from homeassistant.config_entries import SOURCE_USER
 from homeassistant.const import (
     CONF_ICON,
@@ -18,6 +20,7 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt
+import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 import yaml
 
@@ -442,162 +445,155 @@ async def test_overrides_with_id(hass: HomeAssistant) -> None:
     await check_state_at_time(hass, sensor, now, "awake")
 
 
-def schedule_modified_by_template(configfile: str):
+@pytest.mark.parametrize(
+    ("configfile"),
+    [
+        "tests/test001.yaml",
+        "tests/test002.yaml",
+        "tests/test003.yaml",
+    ],
+)
+async def test_schedule_modified_by_template(hass: HomeAssistant, configfile: str):
     sensorname = configfile.replace("tests/", "").replace(".yaml", "")
 
-    async def fn(hass: HomeAssistant) -> None:
-        mode_switch = "input_boolean.mode"
-        assert await setup.async_setup_component(
-            hass, input_boolean.DOMAIN, {"input_boolean": {"mode": None}}
+    mode_switch = "input_boolean.mode"
+    assert await setup.async_setup_component(
+        hass, input_boolean.DOMAIN, {"input_boolean": {"mode": None}}
+    )
+
+    with open(configfile) as f:
+        config = yaml.safe_load(f)
+
+    now = make_testtime(4, 0)
+    with patch(TIME_FUNCTION_PATH, return_value=now) as p:
+        await setup_test_entities(
+            hass,
+            config[0],
         )
 
-        with open(configfile) as f:
-            config = yaml.safe_load(f)
+        sensor = [e for e in hass.data["sensor"].entities][-1]
+        check_state(hass, f"sensor.{sensorname}", "off", p, now)
 
-        now = make_testtime(4, 0)
-        with patch(TIME_FUNCTION_PATH, return_value=now) as p:
-            await setup_test_entities(
-                hass,
-                config[0],
-            )
+    assert len(sensor._attributes["errors"]) == 0
 
-            sensor = [e for e in hass.data["sensor"].entities][-1]
-            check_state(hass, f"sensor.{sensorname}", "off", p, now)
+    hass.states.async_set(mode_switch, "on")
+    await hass.async_block_till_done()
 
-        assert len(sensor._attributes["errors"]) == 0
+    now += timedelta(hours=8, minutes=1)  # 12:01
+    await check_state_at_time(hass, sensor, now, "on")
 
-        hass.states.async_set(mode_switch, "on")
+    hass.states.async_set(mode_switch, "off")
+    await hass.async_block_till_done()
+
+    await check_state_at_time(hass, sensor, now, "off")
+
+    now += timedelta(hours=2)  # 14:01
+    await check_state_at_time(hass, sensor, now, "off")
+
+    # check toggle/turn on/turn off
+    with patch(TIME_FUNCTION_PATH, return_value=now) as p:
+        await hass.services.async_call(
+            DOMAIN,
+            SERVICE_TOGGLE,
+            # service_data=data,
+            blocking=True,
+            target={
+                "entity_id": f"sensor.{sensorname}",
+            },
+        )
         await hass.async_block_till_done()
 
-        now += timedelta(hours=8, minutes=1)  # 12:01
-        await check_state_at_time(hass, sensor, now, "on")
+    now += timedelta(minutes=2)  # 14:03
+    await check_state_at_time(hass, sensor, now, "on")
 
-        hass.states.async_set(mode_switch, "off")
+    with patch(TIME_FUNCTION_PATH, return_value=now) as p:
+        await hass.services.async_call(
+            DOMAIN,
+            SERVICE_TURN_OFF,
+            # service_data=data,
+            blocking=True,
+            target={
+                "entity_id": f"sensor.{sensorname}",
+            },
+        )
         await hass.async_block_till_done()
 
-        await check_state_at_time(hass, sensor, now, "off")
+    now += timedelta(minutes=2)  # 14:05
+    await check_state_at_time(hass, sensor, now, "off")
 
-        now += timedelta(hours=2)  # 14:01
-        await check_state_at_time(hass, sensor, now, "off")
+    with patch(TIME_FUNCTION_PATH, return_value=now) as p:
+        await hass.services.async_call(
+            DOMAIN,
+            SERVICE_TURN_ON,
+            # service_data=data,
+            blocking=True,
+            target={
+                "entity_id": f"sensor.{sensorname}",
+            },
+        )
+        await hass.async_block_till_done()
 
-        # check toggle/turn on/turn off
-        with patch(TIME_FUNCTION_PATH, return_value=now) as p:
-            await hass.services.async_call(
-                DOMAIN,
-                SERVICE_TOGGLE,
-                # service_data=data,
-                blocking=True,
-                target={
-                    "entity_id": f"sensor.{sensorname}",
-                },
-            )
-            await hass.async_block_till_done()
+    now += timedelta(minutes=2)  # 14:07
+    await check_state_at_time(hass, sensor, now, "on")
 
-        now += timedelta(minutes=2)  # 14:03
-        await check_state_at_time(hass, sensor, now, "on")
-
-        with patch(TIME_FUNCTION_PATH, return_value=now) as p:
-            await hass.services.async_call(
-                DOMAIN,
-                SERVICE_TURN_OFF,
-                # service_data=data,
-                blocking=True,
-                target={
-                    "entity_id": f"sensor.{sensorname}",
-                },
-            )
-            await hass.async_block_till_done()
-
-        now += timedelta(minutes=2)  # 14:05
-        await check_state_at_time(hass, sensor, now, "off")
-
-        with patch(TIME_FUNCTION_PATH, return_value=now) as p:
-            await hass.services.async_call(
-                DOMAIN,
-                SERVICE_TURN_ON,
-                # service_data=data,
-                blocking=True,
-                target={
-                    "entity_id": f"sensor.{sensorname}",
-                },
-            )
-            await hass.async_block_till_done()
-
-        now += timedelta(minutes=2)  # 14:07
-        await check_state_at_time(hass, sensor, now, "on")
-
-        await remove_override(hass, f"sensor.{sensorname}", now, id="turn_on_off")
-        now += timedelta(minutes=2)  # 14:09
-        await check_state_at_time(hass, sensor, now, "off")
-
-    return fn
+    await remove_override(hass, f"sensor.{sensorname}", now, id="turn_on_off")
+    now += timedelta(minutes=2)  # 14:09
+    await check_state_at_time(hass, sensor, now, "off")
 
 
-def schedule_modified_by_template_with_error(configfile: str):
+@pytest.mark.parametrize(
+    ("configfile"),
+    [
+        "tests/test004.yaml",
+    ],
+)
+async def test_schedule_modified_by_template_with_error(
+    hass: HomeAssistant, configfile: str
+):
     sensorname = configfile.replace("tests/", "").replace(".yaml", "")
 
-    async def fn(hass: HomeAssistant) -> None:
-        mode_switch = "input_boolean.mode"
-        assert await setup.async_setup_component(
-            hass, input_boolean.DOMAIN, {"input_boolean": {"mode": None}}
+    mode_switch = "input_boolean.mode"
+    assert await setup.async_setup_component(
+        hass, input_boolean.DOMAIN, {"input_boolean": {"mode": None}}
+    )
+
+    with open(configfile) as f:
+        config = yaml.safe_load(f)
+
+    now = make_testtime(4, 0)
+    with patch(TIME_FUNCTION_PATH, return_value=now) as p:
+        await setup_test_entities(
+            hass,
+            config[0],
         )
 
-        with open(configfile) as f:
-            config = yaml.safe_load(f)
+        sensor = [e for e in hass.data["sensor"].entities][-1]
+        check_state(hass, f"sensor.{sensorname}", "off", p, now)
 
-        now = make_testtime(4, 0)
-        with patch(TIME_FUNCTION_PATH, return_value=now) as p:
-            await setup_test_entities(
-                hass,
-                config[0],
-            )
+    assert "on" in sensor._attributes["errors"]
 
-            sensor = [e for e in hass.data["sensor"].entities][-1]
-            check_state(hass, f"sensor.{sensorname}", "off", p, now)
+    hass.states.async_set(mode_switch, "off")
+    await hass.async_block_till_done()
 
-        assert "on" in sensor._attributes["errors"]
+    now += timedelta(hours=8, minutes=1)  # 12:01
+    await check_state_at_time(hass, sensor, now, "off")
 
-        hass.states.async_set(mode_switch, "off")
-        await hass.async_block_till_done()
+    hass.states.async_set(mode_switch, "off")
+    await hass.async_block_till_done()
 
-        now += timedelta(hours=8, minutes=1)  # 12:01
-        await check_state_at_time(hass, sensor, now, "off")
+    await check_state_at_time(hass, sensor, now, "off")
 
-        hass.states.async_set(mode_switch, "off")
-        await hass.async_block_till_done()
-
-        await check_state_at_time(hass, sensor, now, "off")
-
-        now += timedelta(hours=2)  # 14:01
-        await check_state_at_time(hass, sensor, now, "off")
-
-    return fn
-
-
-test_schedule_modified_by_template1 = schedule_modified_by_template(
-    "tests/test001.yaml"
-)
-
-test_schedule_modified_by_template2 = schedule_modified_by_template(
-    "tests/test002.yaml"
-)
-
-test_schedule_modified_by_template3 = schedule_modified_by_template(
-    "tests/test003.yaml"
-)
-
-test_schedule_modified_by_template4_with_error = (
-    schedule_modified_by_template_with_error("tests/test004.yaml")
-)
+    now += timedelta(hours=2)  # 14:01
+    await check_state_at_time(hass, sensor, now, "off")
 
 
 WORKDAY_SENSOR_CONFIG = {
-    "name": "workday_sensor",
+    "name": workday_const.DEFAULT_NAME,
     "country": "CA",
     # "province": "ON",
-    # "excludes": DEFAULT_EXCLUDES,
-    # "days_offset": DEFAULT_OFFSET,
-    # "workdays": DEFAULT_WORKDAYS,
+    "excludes": workday_const.DEFAULT_EXCLUDES,
+    "days_offset": workday_const.DEFAULT_OFFSET,
+    "workdays": workday_const.DEFAULT_WORKDAYS,
     "add_holidays": [],
     "remove_holidays": [],
     "language": "en_US",
@@ -610,26 +606,59 @@ async def init_workday_sensor(
     entry_id: str = "1",
     source: str = SOURCE_USER,
 ) -> MockConfigEntry:
-    """Set up the Scrape integration in Home Assistant."""
+    with patch(
+        "homeassistant.components.workday.async_setup_entry", return_value=True
+    ) as mock_setup:
+        _LOGGER.warning(mock_setup)
+        config_entry = MockConfigEntry(
+            domain=workday_const.DOMAIN,
+            source=source,
+            data={},
+            options=config,
+            # entry_id=entry_id,
+        )
 
-    config_entry = MockConfigEntry(
-        domain=DOMAIN,
-        source=source,
-        data={},
-        options=config,
-        entry_id=entry_id,
-    )
+        await hass.config_entries.async_forward_entry_setups(
+            config_entry, workday_const.PLATFORMS
+        )
+        # config_entry.add_to_hass(hass)
 
-    config_entry.add_to_hass(hass)
+        # await hass.config_entries.async_setup(config_entry.entry_id)
+        # await hass.async_block_till_done()
 
-    await hass.config_entries.async_setup(config_entry.entry_id)
-    await hass.async_block_till_done()
-
-    return config_entry
+        # return config_entry
+        return True
 
 
-async def disabled_test_schedule_using_condition(hass: HomeAssistant):
+async def disable_test_workday_sensor_setup(
+    hass: HomeAssistant,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    """Test setup from various configs."""
+    # freezer.move_to(datetime(2022, 4, 15, 12))  # Monday
+    await init_workday_sensor(hass)
+
+    state = hass.states.get("binary_sensor.workday_sensor")
+    assert state is not None
+    config = WORKDAY_SENSOR_CONFIG
+    assert state.attributes == {
+        "friendly_name": "Workday Sensor",
+        "workdays": config["workdays"],
+        "excludes": config["excludes"],
+        "days_offset": config["days_offset"],
+    }
+
+
+async def disable_test_init_workday_sensor(hass: HomeAssistant) -> None:
+    await init_workday_sensor(hass)
+
+
+async def disable_test_schedule_using_condition(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+):
+    freezer.move_to(datetime(2021, 11, 19))
     workday = "binary_sensor.workday_sensor"
+    # await init_workday_sensor(hass)
 
     configfile = "tests/test011.yaml"
     with open(configfile) as f:
@@ -646,16 +675,20 @@ async def disabled_test_schedule_using_condition(hass: HomeAssistant):
         sensor = [e for e in hass.data["sensor"].entities][-1]
         check_state(hass, "sensor.test011", "nighttime", p, now)
 
-    with patch(DATE_FUNCTION_PATH, return_value=date(2021, 11, 19)) as p:
+    # with patch(DATE_FUNCTION_PATH, return_value=date(2021, 11, 19)) as p:
+    if 1:
         # now install workday sensor
         await init_workday_sensor(hass)
         await hass.async_block_till_done()
         await sensor.async_update_ha_state(force_refresh=True)
 
-        assert p.called, "Time patch was not applied"
+        workday_state = hass.states.get(workday)
+        _LOGGER.warning(f"workday = {workday_state}")
 
-        workday_sensor = [e for e in hass.data["binary_sensor"].entities][-1]
-        _LOGGER.warn("workday sensor is %r", workday_sensor)
+        # assert p.called, "Time patch was not applied"
+
+        # workday_sensor = [e for e in hass.data["binary_sensor"].entities][-1]
+        # _LOGGER.warning("workday sensor is %r", workday_sensor)
 
         check_state(hass, workday, "on")
 
@@ -671,11 +704,13 @@ async def disabled_test_schedule_using_condition(hass: HomeAssistant):
         now += timedelta(hours=6)  # 16:10
         await check_state_at_time(hass, sensor, now, "afternoon")
 
-    with patch(DATE_FUNCTION_PATH, return_value=date(2021, 12, 25)) as p:
+    freezer.move_to(datetime(2021, 12, 25, 12))
+    # with patch(DATE_FUNCTION_PATH, return_value=date(2021, 12, 25)) as p:
+    if 1:
         await hass.async_block_till_done()
-        await workday_sensor.async_update_ha_state(force_refresh=True)
+        # await workday_sensor.async_update_ha_state(force_refresh=True)
 
-        assert p.called, "Time patch was not applied"
+        # assert p.called, "Time patch was not applied"
 
         check_state(hass, workday, "off")
 

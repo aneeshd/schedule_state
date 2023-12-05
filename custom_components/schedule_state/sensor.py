@@ -188,15 +188,17 @@ class Override(dict):
             x = Override(
                 d.get("id"),
                 d.get("state"),
-                dt.parse_time(d.get("start")),
-                dt.parse_time(d.get("end")),
-                dt.parse_datetime(d.get("expires")),
+                # start/end are datetime.time's - no need to parse
+                d.get("start"),
+                d.get("end"),
+                # expires is datetime.datetime - no need to parse
+                d.get("expires"),
                 d.get("icon"),
                 extra,
             )
             return x
 
-        except (ValueError, KeyError):
+        except (ValueError, KeyError, TypeError):
             _LOGGER.error(f"could not reconstruct saved override: {d}")
             return None
 
