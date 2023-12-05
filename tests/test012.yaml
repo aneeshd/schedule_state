@@ -4,10 +4,14 @@
   icon: mdi:sleep
   events:
     - state: "asleep"
-      end_template: "5:30"
+      end: "5:00"
+      end_offset: "{{ 99/3-3 }}" # 30
     - state: "awake"
-      start_template: "5:30"
-      end: "22:30"
+      start: "5:45"
+      start_offset: "{{ -5*3 }}" # -15
+      end: "22:35"
+      end_offset: "{{ -25/5 }}" # -5
       icon: mdi:run
     - state: asleep
-      start: "22:30"
+      start: "22:00"
+      start_offset: "{{ 10*3 }}" # 30

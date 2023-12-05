@@ -68,6 +68,7 @@ All times are interpreted as belonging to the local timezone.
 
 The start and end times can be adjusted with an offset, in minutes, using the `start_offset`/`end_offset` settings.
 This helps define events such as "x minutes before sunrise", in a simpler way than using complicated templates.
+These offsets can also be specified as templates.
 
 This simple configuration will cause the sensor to report `sleep` or `awake` depending on the time of day.
 You can create automations that trigger on the sensor state. Or, you can use the value of the sensor state as a

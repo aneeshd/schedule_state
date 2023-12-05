@@ -2,6 +2,7 @@
 A sensor that returns a string based on a defined schedule.
 """
 import asyncio
+from contextlib import suppress
 from dataclasses import dataclass
 from datetime import datetime, time, timedelta
 import hashlib
@@ -52,7 +53,6 @@ from .const import (
     CONF_DURATION,
     CONF_END,
     CONF_END_OFFSET,
-    CONF_END_TEMPLATE,
     CONF_ERROR_ICON,
     CONF_EVENTS,
     CONF_EXTRA_ATTRIBUTES,
@@ -60,7 +60,6 @@ from .const import (
     CONF_REFRESH,
     CONF_START,
     CONF_START_OFFSET,
-    CONF_START_TEMPLATE,
     DEFAULT_ERROR_ICON,
     DEFAULT_ICON,
     DEFAULT_NAME,
@@ -100,11 +99,9 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
             vol.All(
                 {
                     vol.Optional(CONF_START): TimeSchema,
-                    cv.deprecated(CONF_START_TEMPLATE, CONF_START): TimeSchema,
-                    vol.Optional(CONF_START_OFFSET): int,
+                    vol.Optional(CONF_START_OFFSET): vol.Any(cv.template, float),
                     vol.Optional(CONF_END): TimeSchema,
-                    cv.deprecated(CONF_END_TEMPLATE, CONF_END): TimeSchema,
-                    vol.Optional(CONF_END_OFFSET): int,
+                    vol.Optional(CONF_END_OFFSET): vol.Any(cv.template, float),
                     vol.Optional(CONF_STATE): vol.Any(cv.template, cv.string),
                     vol.Optional(CONF_COMMENT): cv.string,
                     vol.Optional(CONF_CONDITION): _CONDITION_SCHEMA,
@@ -701,13 +698,34 @@ class ScheduleSensorData:
                 self.force_refresh = force_refresh
                 self.error_states.add(state)
                 _LOGGER.error(
-                    f"{self.name}: {state}: error with event definition - skipping, will try again in {self.minutes_to_refresh_on_error} minutes"
+                    f"{self.name}: {state}: error with start/end definition - skipping, will try again in {self.minutes_to_refresh_on_error} minutes"
                 )
                 continue
 
-            # apply start/end offsets, if any
-            start = self.apply_offset(start, event.get(CONF_START_OFFSET, 0))
-            end = self.apply_offset(end, event.get(CONF_END_OFFSET, 0))
+            # apply start/end offsets, if any - these can be templates
+            start_offset = None
+            end_offset = None
+            offset_eval = self.evaluate_template(event, CONF_START_OFFSET, default=0)
+            if offset_eval.success:
+                with suppress(ValueError):
+                    start_offset = float(offset_eval.result)
+
+            offset_eval = self.evaluate_template(event, CONF_END_OFFSET, default=0)
+            if offset_eval.success:
+                with suppress(ValueError):
+                    end_offset = float(offset_eval.result)
+
+            if None in (start_offset, end_offset):
+                # There was a problem evaluating the template - force a refresh
+                self.force_refresh = force_refresh
+                self.error_states.add(state)
+                _LOGGER.error(
+                    f"{self.name}: {state}: error with offset definition - skipping, will try again in {self.minutes_to_refresh_on_error} minutes"
+                )
+                continue
+
+            start = self.apply_offset(start, start_offset)
+            end = self.apply_offset(end, end_offset)
 
             if start > end:
                 self.error_states.add(state)
@@ -798,7 +816,6 @@ class ScheduleSensorData:
         template_eval = self.evaluate_template(
             event,
             CONF_START,
-            CONF_START_TEMPLATE,
             time.min,
         )
         if not template_eval.success:
@@ -815,7 +832,6 @@ class ScheduleSensorData:
         template_eval = self.evaluate_template(
             event,
             CONF_END,
-            CONF_END_TEMPLATE,
             time.max,
         )
         if not template_eval.success:
@@ -838,18 +854,10 @@ class ScheduleSensorData:
         self,
         obj,
         prefix: str,
-        prefixt: str = None,
         default=None,
         track_entities: bool = True,
     ) -> TemplateResult:
         value = obj.get(prefix, None)
-        value_template = obj.get(prefixt, None)
-
-        # 'thing' and 'thing'_template are now aliases, and it is only allowed to provide one or the other,
-        # so we can safely combine them knowing that at least one of them will be 'None'
-        value = value or value_template
-        del value_template
-        del prefixt
 
         debugmsg = ""
 
@@ -896,38 +904,30 @@ class ScheduleSensorData:
         if not isinstance(value, str):
             return value
 
-        try:
+        with suppress((ValueError, TypeError)):
             date = dt.parse_datetime(value)
             if date is not None:
                 _LOGGER.debug(f"{self.name}: ...... found datetime: {date}")
                 tme = dt.as_local(date).time()
                 return tme
-        except (ValueError, TypeError):
-            pass
 
-        try:
+        with suppress((ValueError, TypeError)):
             date = datetime.fromisoformat(value)
             _LOGGER.debug(f"{self.name}: ...... found isoformat date: {date}")
             tme = dt.as_local(date).time()
             return tme
-        except (ValueError, TypeError):
-            pass
 
-        try:
+        with suppress((ValueError, TypeError)):
             tme = dt.parse_time(value)
             if tme is not None:
                 _LOGGER.debug(f"{self.name}: ...... found time: {tme}")
                 return localtime_from_time(tme)
-        except (ValueError, TypeError):
-            pass
 
-        try:
+        with suppress((ValueError, TypeError)):
             tme = time.fromisoformat(value)
             if tme is not None:
                 _LOGGER.debug(f"{self.name}: ...... found isoformat time: {tme}")
                 return localtime_from_time(tme)
-        except (ValueError, TypeError):
-            pass
 
         try:
             date = dt.utc_from_timestamp(int(float(value)))
