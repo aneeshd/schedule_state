@@ -901,13 +901,13 @@ files = [
 
 [[package]]
 name = "homeassistant"
-version = "2023.12.0b2"
+version = "2023.12.0b4"
 description = "Open-source home automation platform running on Python 3."
 optional = false
 python-versions = ">=3.11.0"
 files = [
-    {file = "homeassistant-2023.12.0b2-py3-none-any.whl", hash = "sha256:d2cf4939585ecfc0f5f56beb159c3ae05cca43e4a0256f63163f86e6a603e32b"},
-    {file = "homeassistant-2023.12.0b2.tar.gz", hash = "sha256:9ab6b08c55b4c2471fa99fa62cb9bdd0054eb5076fe5d746c5576600a0107720"},
+    {file = "homeassistant-2023.12.0b4-py3-none-any.whl", hash = "sha256:7be9ec40629fb669886bb8c59ad08b069d9700aaed8ebecb5a9d1a23522a5aea"},
+    {file = "homeassistant-2023.12.0b4.tar.gz", hash = "sha256:46ffaf75098ca5e9f2876898487c0a52e3aa57348a0cf3fbb06ca9563d566835"},
 ]
 
 [package.dependencies]
@@ -1808,19 +1808,19 @@ pytest = ">=3.6"
 
 [[package]]
 name = "pytest-homeassistant-custom-component"
-version = "0.13.80"
+version = "0.13.81"
 description = "Experimental package to automatically extract test plugins for Home Assistant custom components"
 optional = false
 python-versions = ">=3.11"
 files = [
-    {file = "pytest-homeassistant-custom-component-0.13.80.tar.gz", hash = "sha256:bb3a75686b2f72255a08cb3d6f9b6fd29e853a545b28608a593e80c413a188bf"},
-    {file = "pytest_homeassistant_custom_component-0.13.80-py3-none-any.whl", hash = "sha256:8624f9b0ec62bdd84225d354429e2745e2e06fc9977cb3a019010231c303352e"},
+    {file = "pytest-homeassistant-custom-component-0.13.81.tar.gz", hash = "sha256:240d34f501abd6ed5e872758b5ce9619ba2f27f63cb253e5f2a758b36c18511e"},
+    {file = "pytest_homeassistant_custom_component-0.13.81-py3-none-any.whl", hash = "sha256:4b5fc6b87f62f04ea318b82f4cbdd72fe5a67c8067698439e77834bf6ccf428d"},
 ]
 
 [package.dependencies]
 coverage = "7.3.2"
 freezegun = "1.2.2"
-homeassistant = "2023.12.0b2"
+homeassistant = "2023.12.0b4"
 mock-open = "1.4.0"
 numpy = "1.26.0"
 paho-mqtt = "1.6.1"
@@ -2516,4 +2516,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11,<3.13"
-content-hash = "5acf9f44e8be39b29217015aa5fd6797d564d418c9137b518dda8feeed34f082"
+content-hash = "a63723920cc3be92dc0d43cb53c83f6723767a9561478cdcf11c9678e94319b2"
