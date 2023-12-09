@@ -736,7 +736,7 @@ class ScheduleSensorData:
 
             elif start == end:
                 _LOGGER.warning(
-                    f"{self.name}: {state}: no duration - start and end:{start} - skipping"
+                    f"{self.name}: {state}: no duration - start = end = {start} - skipping"
                 )
                 continue
 
