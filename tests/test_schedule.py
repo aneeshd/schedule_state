@@ -445,7 +445,9 @@ async def test_overrides_with_id(hass: HomeAssistant) -> None:
     await check_state_at_time(hass, sensor, now, "awake")
 
     # make a long override
-    await set_override(hass, "sensor.test000", now, "vacation", duration=1439, id="vacation")
+    await set_override(
+        hass, "sensor.test000", now, "vacation", duration=1439, id="vacation"
+    )
     await check_state_at_time(hass, sensor, now, "vacation")
     TEST_TIMES = ((0, 12), (1, 48), (4, 19), (13, 26), (18, 4))
     for test_time in TEST_TIMES:
