@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "schedule_state"
-version = "0.14.0"
+version = "0.19.2"
 description = ""
 authors = ["Aneesh Dalvi <2533133+aneeshd@users.noreply.github.com>"]
 
