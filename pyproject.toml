@@ -18,7 +18,7 @@ coverage = "^7.3.2"
 codespell = "^2.2.6"
 pytest-asyncio = "^0.21.0"
 black = "^23.11.0"
-homeassistant = "^2023.12.0"
+homeassistant = "^2023.12.1"
 pytest-homeassistant-custom-component = "^0.13.80"
 holidays = "0.37"
 
