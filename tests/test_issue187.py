@@ -60,7 +60,7 @@ async def test_issue187(hass: HomeAssistant):
             "toggle",
             blocking=True,
             target={
-                "entity_id": f"input_boolean.wohnzimmer_fenster",
+                "entity_id": "input_boolean.wohnzimmer_fenster",
             },
         )
         await hass.async_block_till_done()
