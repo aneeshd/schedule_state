@@ -94,6 +94,8 @@ Note: the last icon assigned to a state is used for all occurrences of that stat
 
 If `start` is not provided, it defaults to the start of the day, and if `end` is not provided, it defaults to the end of the day.
 
+Note: Make sure that times are quoted!
+
 ![schedule1][schedule1img]
 
 Events can be defined in any order. If an event is created that overlaps with existing events, the existing events are re-sized to
