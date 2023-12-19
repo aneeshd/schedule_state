@@ -77,4 +77,4 @@ async def test_issue187(hass: HomeAssistant):
         assert math.isclose(
             float(sensor._attributes["next_state"]), 18
         ), f"expected next_state=18 vs actual={sensor._attributes['next_state']}"
-        assert sensor._attributes["window"]=="open"
+        assert sensor._attributes["window"] == "open"
