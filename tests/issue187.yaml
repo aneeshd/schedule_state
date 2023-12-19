@@ -1,19 +1,24 @@
 # see https://github.com/aneeshd/schedule_state/issues/187
 
 - platform: schedule_state
+  name: schedule test
+  refresh: "00:30:00"
   default_state: 18
+  minutes_to_refresh_on_error: 1
+  extra_attributes:
+    unit_of_measurement: "°C"
+    state_class: measurement
+    window: "closed"
   events:
-  - state: 15
-    # user error: start/end times were not quoted
-    start: "10:00"
-    end: "15:00"
-  - state: 20
-    # user error: start/end times were not quoted
-    start: "15:00"
-    end: "20:00"
-  - condition:
-      - condition: state
-        entity_id: input_boolean.wohnzimmer_fenster
-        state: "on"
-    # user error: extra attribute not declared in defaults section
-    window: "open"
+    - state: 15
+      start: "10:00"
+      end: "15:00"
+    - state: 20
+      start: "15:00"
+      end: "20:00"
+    - condition:
+        - condition: state
+          entity_id: input_boolean.wohnzimmer_fenster
+          state: "on"
+      window: "open"
+      
