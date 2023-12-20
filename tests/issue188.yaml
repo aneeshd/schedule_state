@@ -1,0 +1,35 @@
+# see https://github.com/aneeshd/schedule_state/issues/188
+
+- platform: schedule_state
+  name: Schedule SdB
+  refresh: "6:00:00"
+  default_state: default
+  icon: mdi:calendar-check
+  error_icon: mdi:calendar-alert
+  minutes_to_refresh_on_error: 5
+  events:
+    - start: "0:00"
+      end: "8:00"
+      state: night
+      icon: mdi:weather-night
+    - start: "8:00"
+      end: "8:30"
+      state: boost
+      icon: mdi:thermometer-chevron-up
+    - start: "8:30"
+      end: "23:00"
+      state: day
+      icon: mdi:sun-thermometer
+    - start: "23:00"
+      state: night
+      icon: mdi:weather-night
+    - state: away
+      condition:
+        - condition: state
+          entity_id: zone.home
+          state: 0'
+    - state: summer
+      condition:
+        - condition: state
+          entity_id: input_boolean.mode_ete
+          state: 'on'
