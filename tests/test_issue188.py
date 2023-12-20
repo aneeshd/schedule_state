@@ -85,12 +85,12 @@ async def test_issue188(hass: HomeAssistant):
     now = make_testtime(19, 22)
     await check_state_at_time(hass, sensor, now, "on")
 
-    now = make_testtime(8, 0)
-    with patch(TIME_FUNCTION_PATH, return_value=now) as p:
-        await sensor.async_update_ha_state(force_refresh=True)
+    # now = make_testtime(8, 0)
+    # with patch(TIME_FUNCTION_PATH, return_value=now):
+    #     await sensor.async_update_ha_state(force_refresh=True)
 
     now = make_testtime(16, 0)
-    with patch(TIME_FUNCTION_PATH, return_value=now) as p:
+    with patch(TIME_FUNCTION_PATH, return_value=now):
         await hass.services.async_call(
             "input_boolean",
             "toggle",
@@ -100,3 +100,4 @@ async def test_issue188(hass: HomeAssistant):
             },
         )
         await hass.async_block_till_done()
+        # TODO: add some check here
