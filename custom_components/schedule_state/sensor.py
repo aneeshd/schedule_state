@@ -185,11 +185,11 @@ class Override(dict):
             x = Override(
                 d.get("id"),
                 d.get("state"),
-                # start/end are datetime.time's - no need to parse
+                # start/end are datetime.time's - no need to parse - see #166
                 d.get("start"),
                 d.get("end"),
-                # expires is datetime.datetime - no need to parse
-                d.get("expires"),
+                # this is quite confusing, because this gets converted to a string and needs to be parsed - see #188
+                dt.parse_datetime(d.get("expires")),
                 d.get("icon"),
                 extra,
             )
@@ -551,6 +551,8 @@ class ScheduleSensor(SensorEntity, RestoreEntity):
         # overrides are only saved every 15 minutes
         # see STATE_DUMP_INTERVAL in restore_state.py -- is there any way to force this when an override is added/removed?
         _LOGGER.debug(f"{self.name}: extra_restore_state_data = {self.data.overrides}")
+        # note: self.data.overrides is saved in native format, without any explicit conversions, but HA is still converting it to text somewhere
+        # this is not what the pytest-homeassistant-custom-component does...
         return ScheduleStateExtraStoredData(self.data.overrides)
 
     async def async_update_config(self, override_list: list[Override]) -> None:
