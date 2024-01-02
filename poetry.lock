@@ -1588,13 +1588,13 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "portion"
-version = "2.4.0"
+version = "2.4.2"
 description = "Python data structure and operations for intervals"
 optional = false
 python-versions = "~= 3.7"
 files = [
-    {file = "portion-2.4.0-py3-none-any.whl", hash = "sha256:a084deb01382b53fc7bc83f0734879c537cd7f22c6b6f78ccdc39e963016ea0c"},
-    {file = "portion-2.4.0.tar.gz", hash = "sha256:deb16389e844dbf9aeb654261fce5febd720e4786c6690efbb9dc11608226840"},
+    {file = "portion-2.4.2-py3-none-any.whl", hash = "sha256:17f0388d7df3488313ac527d8da9542d2c1329dfefb8793a77ad2dfc97596051"},
+    {file = "portion-2.4.2.tar.gz", hash = "sha256:5289b40d98959b16b3f6927781678935d3df1b7c14947f5d7778e5e04dd9a065"},
 ]
 
 [package.dependencies]
@@ -2534,4 +2534,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11,<3.13"
-content-hash = "9f7161b1f43087cefa4df893f2bdac81d2661cdb0181c19f5530d86e90caf843"
+content-hash = "4cf5c97897305042d8093c09f2e1722a3c9220248d7ceac38bc9823c93dd97a0"
