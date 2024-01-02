@@ -13,6 +13,7 @@ from homeassistant.config_entries import SOURCE_USER
 from homeassistant.const import (
     CONF_ICON,
     CONF_ID,
+    CONF_NAME,
     CONF_STATE,
     SERVICE_TOGGLE,
     SERVICE_TURN_OFF,
@@ -25,8 +26,10 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 import yaml
 
 from custom_components.schedule_state.const import (
+    CONF_ALLOW_WRAP,
     CONF_DURATION,
     CONF_END,
+    CONF_EVENTS,
     CONF_EXTRA_ATTRIBUTES,
     CONF_START,
     DOMAIN,
@@ -44,6 +47,7 @@ dt.set_default_time_zone(test_tz)
 
 async def setup_test_entities(hass: HomeAssistant, config_dict: dict[str, Any]) -> None:
     """Set up a test schedule_state sensor entity."""
+    # _LOGGER.debug(f"config: {config_dict}")
     ret = await setup.async_setup_component(
         hass,
         SENSOR,
@@ -201,11 +205,45 @@ test_basic_setup_template_offsets = basic_test("tests/test012.yaml")
 
 
 async def test_basic_setup_with_error(hass: HomeAssistant) -> None:
-    """Test basic schedule_state setup."""
-    now = make_testtime(4, 0)
-
+    """Test basic schedule_state setup, with an error in the config."""
     with open("tests/test005.yaml") as f:
         config = yaml.safe_load(f)
+
+    # test assumes that "allow_wrap" is not specified in the config
+    assert CONF_ALLOW_WRAP not in config[0]
+
+    await _test_wrapping_not_allowed(hass, config, config[0][CONF_NAME])
+
+
+async def test_wrapping_disabled_global(hass: HomeAssistant) -> None:
+    """Test basic schedule_state setup, with an error in the config."""
+    with open("tests/test005.yaml") as f:
+        config = yaml.safe_load(f)
+
+    # test assumes that "allow_wrap" is not specified in the config
+    assert CONF_ALLOW_WRAP not in config[0]
+    config[0][CONF_ALLOW_WRAP] = False
+    config[0][CONF_NAME] += "_global_wrapping_disabled"
+
+    await _test_wrapping_not_allowed(hass, config, config[0][CONF_NAME])
+
+
+async def test_wrapping_disabled_global_enabled_local(hass: HomeAssistant) -> None:
+    """Test basic schedule_state setup, with an error in the config."""
+    with open("tests/test005.yaml") as f:
+        config = yaml.safe_load(f)
+
+    # test assumes that "allow_wrap" is not specified in the config
+    assert CONF_ALLOW_WRAP not in config[0]
+    config[0][CONF_ALLOW_WRAP] = False
+    config[0][CONF_EVENTS][1][CONF_ALLOW_WRAP] = True
+    config[0][CONF_NAME] += "_wrapping_local_only"
+
+    await _test_wrapping_allowed(hass, config)
+
+
+async def _test_wrapping_not_allowed(hass: HomeAssistant, config, name: str):
+    now = make_testtime(4, 0)
 
     with patch(TIME_FUNCTION_PATH, return_value=now) as p:
         await setup_test_entities(
@@ -226,9 +264,9 @@ async def test_basic_setup_with_error(hass: HomeAssistant) -> None:
     with patch(TIME_FUNCTION_PATH, return_value=now) as p:
         await sensor.async_update_ha_state(force_refresh=True)
 
-        entity_state = check_state(hass, "sensor.test005", "asleep", p, now)
+        entity_state = check_state(hass, f"sensor.{name}", "asleep", p, now)
         assert (
-            entity_state.attributes["friendly_name"] == "test005"
+            entity_state.attributes["friendly_name"] == name
         ), "Friendly name was wrong"
 
     # awake state was not loaded - the default state should be seen
@@ -240,12 +278,78 @@ async def test_basic_setup_with_error(hass: HomeAssistant) -> None:
     await check_state_at_time(hass, sensor, now, "asleep")
 
 
+async def test_wrapping_global(hass: HomeAssistant) -> None:
+    """Test basic schedule_state setup, with an error in the config."""
+    with open("tests/test005.yaml") as f:
+        config = yaml.safe_load(f)
+
+    assert CONF_ALLOW_WRAP not in config[0]
+
+    # allow wrapping at the sensor level
+    config[0][CONF_ALLOW_WRAP] = True
+    config[0][CONF_NAME] += "_global_wrapping"
+
+    await _test_wrapping_allowed(hass, config)
+
+
+async def test_wrapping_local(hass: HomeAssistant) -> None:
+    """Test basic schedule_state setup, with an error in the config."""
+    with open("tests/test005.yaml") as f:
+        config = yaml.safe_load(f)
+
+    assert CONF_ALLOW_WRAP not in config[0]
+
+    # allow wrapping for a specific event
+    config[0][CONF_EVENTS][1][CONF_ALLOW_WRAP] = True
+    config[0][CONF_NAME] += "_local_wrapping"
+
+    await _test_wrapping_allowed(hass, config)
+
+
+async def _test_wrapping_allowed(hass: HomeAssistant, config):
+    now = make_testtime(4, 0)
+
+    with patch(TIME_FUNCTION_PATH, return_value=now) as p:
+        await setup_test_entities(
+            hass,
+            config[0],
+        )
+
+        assert p.called, "Time patch was not applied"
+        assert p.return_value == now, "Time patch was wrong"
+
+    # get the "test005" sensor
+    sensor = [e for e in hass.data["sensor"].entities][-1]
+
+    now += timedelta(minutes=10)  # 4:10
+    with patch(TIME_FUNCTION_PATH, return_value=now) as p:
+        await sensor.async_update_ha_state(force_refresh=True)
+
+    # wrapped event expected
+    await check_state_at_time(hass, sensor, now, "awake")
+
+    # the default state should be seen
+    now += timedelta(hours=16)  # 20:10
+    await check_state_at_time(hass, sensor, now, "default")
+
+    # check that the rest of the schedule is ok
+    now += timedelta(hours=2, minutes=30)  # 22:40
+    await check_state_at_time(hass, sensor, now, "asleep")
+
+    # wrapped event expected
+    now += timedelta(hours=-2)  # 20:40
+    await check_state_at_time(hass, sensor, now, "awake")
+
+
 async def test_overrides(hass: HomeAssistant) -> None:
     """Test schedule_state overrides."""
     now = make_testtime(4, 0)
 
     with open("tests/test000.yaml") as f:
         config = yaml.safe_load(f)
+
+    sensor_name = "test000_overrides"
+    config[0][CONF_NAME] = sensor_name
 
     with patch(TIME_FUNCTION_PATH, return_value=now) as p:
         await setup_test_entities(
@@ -263,20 +367,20 @@ async def test_overrides(hass: HomeAssistant) -> None:
     with patch(TIME_FUNCTION_PATH, return_value=now) as p:
         await sensor.async_update_ha_state(force_refresh=True)
 
-        entity_state = check_state(hass, "sensor.test000", "asleep", p, now)
-        assert entity_state.attributes["friendly_name"] == "test000"
+        entity_state = check_state(hass, f"sensor.{sensor_name}", "asleep", p, now)
+        assert entity_state.attributes["friendly_name"] == f"{sensor_name}"
 
     now += timedelta(hours=16)  # 20:10
     await check_state_at_time(hass, sensor, now, "awake")
 
     # add an invalid override
-    await set_override(hass, "sensor.test000", now, "drowsy")
+    await set_override(hass, f"sensor.{sensor_name}", now, "drowsy")
     now += timedelta(minutes=1)  # 20:11
     await check_state_at_time(hass, sensor, now, "awake")
 
     # add an override
     now += timedelta(minutes=9)  # 20:20
-    await set_override(hass, "sensor.test000", now, "drowsy", duration=15)
+    await set_override(hass, f"sensor.{sensor_name}", now, "drowsy", duration=15)
 
     # check that override state is en effect
     now += timedelta(minutes=10)  # 20:30
@@ -284,30 +388,30 @@ async def test_overrides(hass: HomeAssistant) -> None:
 
     # clear the override and check that we are back to normal
     now += timedelta(minutes=1)  # 20:31
-    await clear_overrides(hass, "sensor.test000", now)
+    await clear_overrides(hass, f"sensor.{sensor_name}", now)
     now += timedelta(minutes=1)  # 20:32
     await check_state_at_time(hass, sensor, now, "awake")
 
     # recalculate the schedule - no change expected - this service is not so useful anymore
     now += timedelta(minutes=1)  # 20:33
-    await recalculate(hass, "sensor.test000", now)
+    await recalculate(hass, f"sensor.{sensor_name}", now)
     now += timedelta(minutes=1)  # 20:34
     await check_state_at_time(hass, sensor, now, "awake")
 
     now += timedelta(minutes=1)  # 20:35
-    await set_override(hass, "sensor.test000", now, "testing", end="22:15")
+    await set_override(hass, f"sensor.{sensor_name}", now, "testing", end="22:15")
     now += timedelta(hours=1)  # 21:35
     await check_state_at_time(hass, sensor, now, "testing")
     now += timedelta(hours=1)  # 22:35
     await check_state_at_time(hass, sensor, now, "asleep")
 
-    await clear_overrides(hass, "sensor.test000", now)
+    await clear_overrides(hass, f"sensor.{sensor_name}", now)
     now += timedelta(minutes=1)  # 22:36
-    await clear_overrides(hass, "sensor.test000", now)
+    await clear_overrides(hass, f"sensor.{sensor_name}", now)
 
     # add an override that goes into the next day
     await set_override(
-        hass, "sensor.test000", now, "feisty", duration=120, id="override123"
+        hass, f"sensor.{sensor_name}", now, "feisty", duration=120, id="override123"
     )
     now += timedelta(minutes=4)  # 22:40
     await check_state_at_time(hass, sensor, now, "feisty")
@@ -321,7 +425,7 @@ async def test_overrides(hass: HomeAssistant) -> None:
     # edit split override, check that split disappears
     now = make_testtime(22, 45)
     await set_override(
-        hass, "sensor.test000", now, "feisty", duration=20, id="override123"
+        hass, f"sensor.{sensor_name}", now, "feisty", duration=20, id="override123"
     )
     await check_state_at_time(hass, sensor, now, "feisty")
     now += timedelta(minutes=21)
@@ -332,7 +436,7 @@ async def test_overrides(hass: HomeAssistant) -> None:
     now = make_testtime(22, 45)
     await set_override(
         hass,
-        "sensor.test000",
+        f"sensor.{sensor_name}",
         now,
         "feisty",
         start="22:40",
@@ -343,7 +447,7 @@ async def test_overrides(hass: HomeAssistant) -> None:
     # add a zero-length override
     await set_override(
         hass,
-        "sensor.test000",
+        f"sensor.{sensor_name}",
         now,
         "ignored",
         start=now.time().isoformat(),
@@ -353,22 +457,28 @@ async def test_overrides(hass: HomeAssistant) -> None:
 
     # add invalid override (all start/end/duration)
     await set_override(
-        hass, "sensor.test000", now, "ignored", start="22:50", end="23:10", duration=5
+        hass,
+        f"sensor.{sensor_name}",
+        now,
+        "ignored",
+        start="22:50",
+        end="23:10",
+        duration=5,
     )
     await check_state_at_time(hass, sensor, now, "feisty")
 
     # add invalid override (only start)
-    await set_override(hass, "sensor.test000", now, "ignored", start="22:50")
+    await set_override(hass, f"sensor.{sensor_name}", now, "ignored", start="22:50")
     await check_state_at_time(hass, sensor, now, "feisty")
 
     # add invalid override (start>end, same day)
     await set_override(
-        hass, "sensor.test000", now, "ignored", end="22:50", start="23:10"
+        hass, f"sensor.{sensor_name}", now, "ignored", end="22:50", start="23:10"
     )
     await check_state_at_time(hass, sensor, now, "feisty")
 
     # override that ends the next day, starting from now
-    await set_override(hass, "sensor.test000", now, "not-ignored", end="2:00")
+    await set_override(hass, f"sensor.{sensor_name}", now, "not-ignored", end="2:00")
     await check_state_at_time(hass, sensor, now, "not-ignored")
 
 

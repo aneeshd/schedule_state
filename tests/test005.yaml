@@ -2,11 +2,17 @@
   name: test005
   refresh: "1:00:00"
   events:
+    # asleep from midnight to 6:30
     - state: "asleep"
-      end: "5:30"
+      end: "6:30"
+
+    # normally an error: start time is later than end time
+    # this behaviour can be changed using the "allow_wrap" setting at either sensor or event level
     - state: "awake"
-      # error: start time is later than end time
-      start: "22:30"
+      start: "20:30"
       end: "5:30"
+
+    # asleep from 22:30 to midnight
+    # note that this will overwrite part of the "awake" event above
     - state: asleep
       start: "22:30"
