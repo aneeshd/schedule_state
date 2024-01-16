@@ -10,7 +10,7 @@ portion = "==2.4.0"
 
 [tool.poetry.group.dev.dependencies]
 isort = "^5.12.0"
-flake8 = "^6.1.0"
+flake8 = "^7.0.0"
 pytest = "^7.4.3"
 pytest-cov = "^4.1.0"
 mypy = "^1.7.1"
