@@ -1,6 +1,7 @@
 """
 A sensor that returns a string based on a defined schedule.
 """
+
 import asyncio
 from contextlib import suppress
 from dataclasses import dataclass

@@ -1,4 +1,5 @@
 """Tests the schedule_state sensor."""
+
 from datetime import date, datetime, time, timedelta
 import logging
 from typing import Any
