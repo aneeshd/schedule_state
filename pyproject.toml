@@ -20,7 +20,7 @@ pytest-asyncio = "^0.23.4"
 black = "^24.2.0"
 homeassistant = "^2024.1.5"
 pytest-homeassistant-custom-component = "^0.13.103"
-holidays = "0.43"
+holidays = "0.45"
 
 [build-system]
 requires = ["poetry-core>=1.2.0"]

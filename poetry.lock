@@ -1147,13 +1147,13 @@ bluetooth-data-tools = ">=1.16.0"
 
 [[package]]
 name = "holidays"
-version = "0.43"
+version = "0.45"
 description = "Generate and work with holidays in Python"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "holidays-0.43-py3-none-any.whl", hash = "sha256:1dca114761bac05fe3e6684d55903c3bd9fb757c37c3dac9da66afd7f8788e38"},
-    {file = "holidays-0.43.tar.gz", hash = "sha256:29e2c5436207dd268a3702338bcc92032aaacf47ed3bb324ff9ba8170e6d0932"},
+    {file = "holidays-0.45-py3-none-any.whl", hash = "sha256:7f24a92aef0954f10e5c2a97246b4ee5ae97e0c3b987f74faf6ec8c4ad290abd"},
+    {file = "holidays-0.45.tar.gz", hash = "sha256:32bca3c0da9b34e9a4ec1a3f1bc2413fc0b3cdc7965bdbc718de1633758affe7"},
 ]
 
 [package.dependencies]
@@ -3153,4 +3153,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12,<3.13"
-content-hash = "0f6918b5e77fbb6f1286fa1e3f626cde3499b3c607ec629016abe4363e5c6c31"
+content-hash = "e5ef9188e66e0c7484655f49935833099d2ed0ac799957e5dd7418a388eb6fb8"
