@@ -76,7 +76,7 @@ You can create automations that trigger on the sensor state. Or, you can use the
 condition in your automations.
 
 Each state can have a custom icon.
-Pick any icon that you can find on [materialdesignicons.com](materialdesignicons.com) and prefix the name with `mdi:`.
+Pick any icon that you can find on [pictogrammers.com](https://pictogrammers.com/library/mdi/) and prefix the name with `mdi:`.
 Note: the last icon assigned to a state is used for all occurrences of that state.
 
 ```yaml
