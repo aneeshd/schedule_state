@@ -16,7 +16,7 @@ Issues not containing the minimum requirements will be closed:
 
 ## Version of the schedule_state component
 <!-- If you are not using the newest version, download and try that before opening an issue
-If you are unsure about the version check the const.py file.
+If you are unsure about the version check the manifest.json file.
 -->
 
 ## Configuration
