@@ -1362,13 +1362,13 @@ habluetooth = ">=0.11.0"
 
 [[package]]
 name = "homeassistant"
-version = "2024.4.0"
+version = "2024.4.1"
 description = "Open-source home automation platform running on Python 3."
 optional = false
 python-versions = ">=3.12.0"
 files = [
-    {file = "homeassistant-2024.4.0-py3-none-any.whl", hash = "sha256:0e96149ff4295f4a905c003d201f1e8693a9b7fbf1b77f08b1c2ac7eb246b988"},
-    {file = "homeassistant-2024.4.0.tar.gz", hash = "sha256:4865ea0e3b76c330bfad3006955f03485c5ab94bc8ac6dd180ec4f094b00250d"},
+    {file = "homeassistant-2024.4.1-py3-none-any.whl", hash = "sha256:2da4aecb4785f8c5bc3992cababf562e1bb8b9ee4e2e98ef2ef729978dd8ba18"},
+    {file = "homeassistant-2024.4.1.tar.gz", hash = "sha256:9cccc1d2a42b611c49035a782f83995b6e56450050da1abfc99b397f701c7405"},
 ]
 
 [package.dependencies]
@@ -2636,19 +2636,19 @@ pytest = ">=4.0.0"
 
 [[package]]
 name = "pytest-homeassistant-custom-component"
-version = "0.13.111"
+version = "0.13.112"
 description = "Experimental package to automatically extract test plugins for Home Assistant custom components"
 optional = false
 python-versions = ">=3.12"
 files = [
-    {file = "pytest-homeassistant-custom-component-0.13.111.tar.gz", hash = "sha256:93151478e6ea7ce9daa8043dd84e475cf27b3ce75ab6e10e2eabc0b56e7ce45c"},
-    {file = "pytest_homeassistant_custom_component-0.13.111-py3-none-any.whl", hash = "sha256:77db32e961f8991f4cbb915462cb229ac9b9a850880678e69bf64d7e30083e60"},
+    {file = "pytest-homeassistant-custom-component-0.13.112.tar.gz", hash = "sha256:e47ce3058396bbb50c8f91ebceab0a27e5ebfd861a420b2a06d2ad23a47ebf2b"},
+    {file = "pytest_homeassistant_custom_component-0.13.112-py3-none-any.whl", hash = "sha256:73c423aa8ad073c8ee175a6978fdf53d5e43414954dd07f2592eb7f58402efaa"},
 ]
 
 [package.dependencies]
 coverage = "7.4.4"
 freezegun = "1.4.0"
-homeassistant = "2024.4.0"
+homeassistant = "2024.4.1"
 mock-open = "1.4.0"
 mypy-dev = "1.10.0a3"
 numpy = "1.26.0"
@@ -3669,4 +3669,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12,<3.13"
-content-hash = "5d5a17ef39965ece07d5b096a1e8ca2de4c0863df8b99c0859613fbfa6ba8a9f"
+content-hash = "81e13123f5528429409396a68ec8fc7642a00623b4df7d6cde2ac19582d83ea3"
