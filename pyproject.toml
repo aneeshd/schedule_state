@@ -6,7 +6,7 @@ authors = ["Aneesh Dalvi <2533133+aneeshd@users.noreply.github.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.12,<3.13"
-portion = "==2.4.0"
+portion = "==2.4.2"
 
 [tool.poetry.group.dev.dependencies]
 isort = "^5.13.2"
