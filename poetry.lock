@@ -1337,13 +1337,13 @@ bluetooth-data-tools = ">=1.16.0"
 
 [[package]]
 name = "hass-nabucasa"
-version = "0.81.0"
+version = "0.81.1"
 description = "Home Assistant cloud integration by Nabu Casa, Inc."
 optional = false
 python-versions = ">=3.11"
 files = [
-    {file = "hass_nabucasa-0.81.0-py3-none-any.whl", hash = "sha256:8ab1f47c8fd61f1443e60de792e6a152edc7ee4d4ac2d05a3f3c697082d95ae6"},
-    {file = "hass_nabucasa-0.81.0.tar.gz", hash = "sha256:acf89d5187365bef402212459c5614f24a6385b90e65fccce0e92892e8e9f964"},
+    {file = "hass_nabucasa-0.81.1-py3-none-any.whl", hash = "sha256:604618c25ec53ac2b5e06c08242e0299c24e87975185f4af119b7659ac3a01a4"},
+    {file = "hass_nabucasa-0.81.1.tar.gz", hash = "sha256:5be7430e6eda80f27e58d67f66a81d2bfebdcf3dfdf8615a0dc816daeaa6585d"},
 ]
 
 [package.dependencies]
@@ -1358,7 +1358,7 @@ PyJWT = ">=2.8.0"
 snitun = "0.39.1"
 
 [package.extras]
-test = ["codespell (==2.2.6)", "mypy (==1.10.0)", "pre-commit (==3.7.1)", "pre-commit-hooks (==4.6.0)", "pylint (==3.2.0)", "pytest (==8.2.0)", "pytest-aiohttp (==1.0.5)", "pytest-timeout (==2.3.1)", "ruff (==0.4.4)", "syrupy (==4.6.1)", "tomli (==2.0.1)", "types-atomicwrites (==1.4.5.1)", "types-pyOpenSSL (==24.1.0.20240425)", "xmltodict (==0.13.0)"]
+test = ["codespell (==2.3.0)", "mypy (==1.10.0)", "pre-commit (==3.7.1)", "pre-commit-hooks (==4.6.0)", "pylint (==3.2.2)", "pytest (==8.2.1)", "pytest-aiohttp (==1.0.5)", "pytest-timeout (==2.3.1)", "ruff (==0.4.7)", "syrupy (==4.6.1)", "tomli (==2.0.1)", "types-atomicwrites (==1.4.5.1)", "types-pyOpenSSL (==24.1.0.20240425)", "xmltodict (==0.13.0)"]
 
 [[package]]
 name = "holidays"
@@ -1390,13 +1390,13 @@ habluetooth = ">=0.11.0"
 
 [[package]]
 name = "homeassistant"
-version = "2024.6.0b5"
+version = "2024.6.0b8"
 description = "Open-source home automation platform running on Python 3."
 optional = false
 python-versions = ">=3.12.0"
 files = [
-    {file = "homeassistant-2024.6.0b5-py3-none-any.whl", hash = "sha256:e28ff19487815531fe70118b544deaa10a0732bcff2370afd82f7d941b0c5a42"},
-    {file = "homeassistant-2024.6.0b5.tar.gz", hash = "sha256:6318a0ebba10655dd34cdcaff20beedbdd938eed6ea178ce620f4102b0000678"},
+    {file = "homeassistant-2024.6.0b8-py3-none-any.whl", hash = "sha256:2cf5ae51a654093d6d1f84371dc42f0a6fa632ec2c794cefb7dbe949589572e9"},
+    {file = "homeassistant-2024.6.0b8.tar.gz", hash = "sha256:be92a9beac14e3a91907644f8b7b5ea131c3ec771adfa37e99d0af3b2c768aac"},
 ]
 
 [package.dependencies]
@@ -1416,7 +1416,7 @@ certifi = ">=2021.5.30"
 ciso8601 = "2.3.1"
 cryptography = "42.0.5"
 fnv-hash-fast = "0.5.0"
-hass-nabucasa = "0.81.0"
+hass-nabucasa = "0.81.1"
 home-assistant-bluetooth = "1.12.0"
 httpx = "0.27.0"
 ifaddr = "0.2.0"
@@ -2692,19 +2692,19 @@ pytest = ">=4.0.0"
 
 [[package]]
 name = "pytest-homeassistant-custom-component"
-version = "0.13.129"
+version = "0.13.131"
 description = "Experimental package to automatically extract test plugins for Home Assistant custom components"
 optional = false
 python-versions = ">=3.12"
 files = [
-    {file = "pytest_homeassistant_custom_component-0.13.129-py3-none-any.whl", hash = "sha256:14b75e5506d018d3e00847a9b5894ca0cef5423080a8778364fcc891a6fad240"},
-    {file = "pytest_homeassistant_custom_component-0.13.129.tar.gz", hash = "sha256:d5c233a4582a360614600c685773f6b57a829f8ab6d79fa4dabdafd714af21e9"},
+    {file = "pytest_homeassistant_custom_component-0.13.131-py3-none-any.whl", hash = "sha256:dc1efe49512e87af9a6848199cecda56041561a087283e8847b7cfdcc3a1da00"},
+    {file = "pytest_homeassistant_custom_component-0.13.131.tar.gz", hash = "sha256:98546e7a677f02e364a0cec2d78be96cb1e5df31a37507b440fc052a5478a448"},
 ]
 
 [package.dependencies]
 coverage = "7.5.0"
 freezegun = "1.5.0"
-homeassistant = "2024.6.0b5"
+homeassistant = "2024.6.0b8"
 mock-open = "1.4.0"
 numpy = "1.26.0"
 paho-mqtt = "1.6.1"
@@ -3672,4 +3672,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12,<3.13"
-content-hash = "7584e6bf3ff96ecdf8138f946e7d81dbdfdb3dea2ccf885a414d869e7ab04970"
+content-hash = "e5a3c7bd837aaf507235aa1f129a553f247e09b3278e52a5f08e7bd2551bc1bc"
