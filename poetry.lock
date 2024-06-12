@@ -1390,13 +1390,13 @@ habluetooth = ">=0.11.0"
 
 [[package]]
 name = "homeassistant"
-version = "2024.6.1"
+version = "2024.6.2"
 description = "Open-source home automation platform running on Python 3."
 optional = false
 python-versions = ">=3.12.0"
 files = [
-    {file = "homeassistant-2024.6.1-py3-none-any.whl", hash = "sha256:3cf36807336dd3e84b8ab6ee8927c6f9899d33a79e0d768ccca60149ab5eabcc"},
-    {file = "homeassistant-2024.6.1.tar.gz", hash = "sha256:429db6b0e560c696d4f668257caf886d646fbb2626fe347bd08e18be70ee17ab"},
+    {file = "homeassistant-2024.6.2-py3-none-any.whl", hash = "sha256:7552fbc65636db91b1810fbafda66a8aeea29f2628c34134ac876acf5817e614"},
+    {file = "homeassistant-2024.6.2.tar.gz", hash = "sha256:78694f701e54eb225977fefbd71cea28a63b4449c2b27883ca91a7765b06a3f1"},
 ]
 
 [package.dependencies]
@@ -2696,19 +2696,19 @@ pytest = ">=4.0.0"
 
 [[package]]
 name = "pytest-homeassistant-custom-component"
-version = "0.13.133"
+version = "0.13.134"
 description = "Experimental package to automatically extract test plugins for Home Assistant custom components"
 optional = false
 python-versions = ">=3.12"
 files = [
-    {file = "pytest_homeassistant_custom_component-0.13.133-py3-none-any.whl", hash = "sha256:d0b19c798e8848c45aab89541450a90b5ed4769f0ad3af6789e48e5d0f616c97"},
-    {file = "pytest_homeassistant_custom_component-0.13.133.tar.gz", hash = "sha256:c704bde8bb94cd6f6f75e220d15c8025ea733b497e0640366f7d8ce0f9402a62"},
+    {file = "pytest_homeassistant_custom_component-0.13.134-py3-none-any.whl", hash = "sha256:d78a0124cf5837d7e08f421dc22392f675e2c4303a9302a15049b9de4b0d6253"},
+    {file = "pytest_homeassistant_custom_component-0.13.134.tar.gz", hash = "sha256:2f512b5a3c4a776836741a2dc912fd869d216ada72b6e9c80c8553689f42734e"},
 ]
 
 [package.dependencies]
 coverage = "7.5.0"
 freezegun = "1.5.0"
-homeassistant = "2024.6.1"
+homeassistant = "2024.6.2"
 mock-open = "1.4.0"
 numpy = "1.26.0"
 paho-mqtt = "1.6.1"
@@ -3676,4 +3676,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12,<3.13"
-content-hash = "50c26a9a65ea5332ab8fb2940a5efe7143ab01f443f9c82b829c054a53e21506"
+content-hash = "73eff215204d79fd3a658d2b40804c102f3c31cb673727227a7cc682bc27f825"
