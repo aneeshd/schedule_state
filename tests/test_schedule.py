@@ -21,7 +21,6 @@ from homeassistant.const import (
     SERVICE_TURN_ON,
 )
 from homeassistant.core import HomeAssistant
-from homeassistant.util import dt
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 import yaml
@@ -42,8 +41,9 @@ TIME_FUNCTION_PATH = "custom_components.schedule_state.sensor.dt_now"
 
 DATE_FUNCTION_PATH = "homeassistant.components.workday.binary_sensor.get_date"
 
-test_tz = dt.get_time_zone("America/Toronto")
-dt.set_default_time_zone(test_tz)
+# recent versions of HA (sometime after 2024.6.1) don't like the default time zone getting changed for unit tests
+# test_tz = dt.get_time_zone("America/Toronto")
+# dt.set_default_time_zone(test_tz)
 
 
 async def setup_test_entities(hass: HomeAssistant, config_dict: dict[str, Any]) -> None:
