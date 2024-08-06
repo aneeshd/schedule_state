@@ -1359,13 +1359,13 @@ habluetooth = ">=3.0"
 
 [[package]]
 name = "homeassistant"
-version = "2024.8.0b2"
+version = "2024.8.0b3"
 description = "Open-source home automation platform running on Python 3."
 optional = false
 python-versions = ">=3.12.0"
 files = [
-    {file = "homeassistant-2024.8.0b2-py3-none-any.whl", hash = "sha256:6428605cb5637aec95f7c6f16dbd6ff6df3d6e3bc8df4f4f7ca965f25d20434c"},
-    {file = "homeassistant-2024.8.0b2.tar.gz", hash = "sha256:e1e736a5e72d79039dd647bb5778e9680b49b85c6269c703befdded8b9cb0e9d"},
+    {file = "homeassistant-2024.8.0b3-py3-none-any.whl", hash = "sha256:ebc127a9068aa4df10ed11f02e7a801d353a5cec6aae249d365a5e3d2483d299"},
+    {file = "homeassistant-2024.8.0b3.tar.gz", hash = "sha256:db928713a08e0f06fa036f6b8bd4174796f9a2177a403d1d2da2c69b860ece6a"},
 ]
 
 [package.dependencies]
@@ -2719,19 +2719,19 @@ pytest = ">=4.0.0"
 
 [[package]]
 name = "pytest-homeassistant-custom-component"
-version = "0.13.149"
+version = "0.13.150"
 description = "Experimental package to automatically extract test plugins for Home Assistant custom components"
 optional = false
 python-versions = ">=3.12"
 files = [
-    {file = "pytest_homeassistant_custom_component-0.13.149-py3-none-any.whl", hash = "sha256:35eb5d8be9bc8755500f8cdf4bc4238f7b2004524850931df15710c6e01d2fe8"},
-    {file = "pytest_homeassistant_custom_component-0.13.149.tar.gz", hash = "sha256:f394a23c0519792467f74778033ffc30e9b6206815c07da25b2052274cb9a54c"},
+    {file = "pytest_homeassistant_custom_component-0.13.150-py3-none-any.whl", hash = "sha256:e581ea3525e1331202bedabec1a0a7850e6807924a9cbd83e594599484e8230b"},
+    {file = "pytest_homeassistant_custom_component-0.13.150.tar.gz", hash = "sha256:8bc74c1b9832c2b7e28c9311fd6c4f5ce5d7b5444e5db7c6f0c858ce973b1c19"},
 ]
 
 [package.dependencies]
 coverage = "7.6.0"
 freezegun = "1.5.1"
-homeassistant = "2024.8.0b2"
+homeassistant = "2024.8.0b3"
 mock-open = "1.4.0"
 numpy = "1.26.0"
 paho-mqtt = "1.6.1"
@@ -3736,4 +3736,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12,<3.13"
-content-hash = "73a4d0032e9a1db255ac8afa8bc3ab18d7dc341e6a5c194eafff8f5b0739c3c0"
+content-hash = "1019241eec212575d936f96e18a8ef890f1eeaeddab0f5c4838a4b6d2da2c294"
