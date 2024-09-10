@@ -1342,13 +1342,13 @@ test = ["codespell (==2.3.0)", "mypy (==1.10.0)", "pre-commit (==3.7.1)", "pre-c
 
 [[package]]
 name = "holidays"
-version = "0.50"
+version = "0.56"
 description = "Generate and work with holidays in Python"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "holidays-0.50-py3-none-any.whl", hash = "sha256:7f17ce3a29bc77194ab90eaa320a8cc71823f6beb8a034c0d892cc20114278c3"},
-    {file = "holidays-0.50.tar.gz", hash = "sha256:f9b7de6c98bafefc5d19087dbb721926b31670133704f414032c22b309648e8a"},
+    {file = "holidays-0.56-py3-none-any.whl", hash = "sha256:19b6410c3ae899ad5746917f106c5f07c899eba3afa3f4ca82981d3ed677f4c4"},
+    {file = "holidays-0.56.tar.gz", hash = "sha256:86e8550724d34f72b4db2292b2a70983067b2ee80eeaf18a30ea882d821814c5"},
 ]
 
 [package.dependencies]
@@ -3753,4 +3753,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12,<3.13"
-content-hash = "674624f3df08f63d909197840ca724f0af301d7ef852888754c178c95454c8dc"
+content-hash = "15d2d018c5dc1fdf181c5275f82db57798a52c838d2f639334ab2fca16a8a6f2"
