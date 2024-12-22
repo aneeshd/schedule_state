@@ -1,0 +1,17 @@
+---
+sensor:
+- platform: schedule_state
+  name: base_heating_schedule
+  default_state: eco
+  icon: mdi:leaf
+  extra_attributes:
+    icon_color: green
+    override_temperature: 0
+  events:
+    - start: "21:00"
+      end: "6:30"
+      state: custom
+      icon: mdi:weather-night
+      allow_wrap: True
+      icon_color: grey
+      override_temperature: 13
