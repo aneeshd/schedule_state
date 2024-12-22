@@ -1,11 +1,12 @@
 """Tests the schedule_state sensor."""
 
-from datetime import date, datetime, time, timedelta
+from datetime import datetime, time, timedelta
 import logging
 from typing import Any
 from unittest.mock import patch
 
 from freezegun.api import FrozenDateTimeFactory
+import holidays
 from homeassistant import setup
 from homeassistant.components import input_boolean
 from homeassistant.components.sensor import DOMAIN as SENSOR
@@ -37,9 +38,7 @@ from custom_components.schedule_state.const import (
 
 _LOGGER = logging.getLogger(__name__)
 
-TIME_FUNCTION_PATH = "custom_components.schedule_state.sensor.dt_now"
-
-DATE_FUNCTION_PATH = "homeassistant.components.workday.binary_sensor.get_date"
+TIME_FUNCTION_PATH = "homeassistant.util.dt.now"
 
 # recent versions of HA (sometime after 2024.6.1) don't like the default time zone getting changed for unit tests
 # test_tz = dt.get_time_zone("America/Toronto")
@@ -730,59 +729,28 @@ async def init_workday_sensor(
     entry_id: str = "1",
     source: str = SOURCE_USER,
 ) -> MockConfigEntry:
-    with patch(
-        "homeassistant.components.workday.async_setup_entry", return_value=True
-    ) as mock_setup:
-        _LOGGER.warning(mock_setup)
-        config_entry = MockConfigEntry(
-            domain=workday_const.DOMAIN,
-            source=source,
-            data={},
-            options=config,
-            # entry_id=entry_id,
-        )
+    config_entry = MockConfigEntry(
+        domain=workday_const.DOMAIN,
+        source=source,
+        data={},
+        options=config,
+        entry_id=entry_id,
+    )
 
-        await hass.config_entries.async_forward_entry_setups(
-            config_entry, workday_const.PLATFORMS
-        )
-        # config_entry.add_to_hass(hass)
+    config_entry.add_to_hass(hass)
 
-        # await hass.config_entries.async_setup(config_entry.entry_id)
-        # await hass.async_block_till_done()
+    await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
 
-        # return config_entry
-        return True
+    return config_entry
 
 
-async def disable_test_workday_sensor_setup(
-    hass: HomeAssistant,
-    freezer: FrozenDateTimeFactory,
-) -> None:
-    """Test setup from various configs."""
-    # freezer.move_to(datetime(2022, 4, 15, 12))  # Monday
-    await init_workday_sensor(hass)
-
-    state = hass.states.get("binary_sensor.workday_sensor")
-    assert state is not None
-    config = WORKDAY_SENSOR_CONFIG
-    assert state.attributes == {
-        "friendly_name": "Workday Sensor",
-        "workdays": config["workdays"],
-        "excludes": config["excludes"],
-        "days_offset": config["days_offset"],
-    }
-
-
-async def disable_test_init_workday_sensor(hass: HomeAssistant) -> None:
-    await init_workday_sensor(hass)
-
-
-async def disable_test_schedule_using_condition(
+@pytest.mark.parametrize("expected_lingering_timers", [True])
+async def test_schedule_using_condition(
     hass: HomeAssistant, freezer: FrozenDateTimeFactory
 ):
     freezer.move_to(datetime(2021, 11, 19))
     workday = "binary_sensor.workday_sensor"
-    # await init_workday_sensor(hass)
 
     configfile = "tests/test011.yaml"
     with open(configfile) as f:
@@ -799,20 +767,17 @@ async def disable_test_schedule_using_condition(
         sensor = [e for e in hass.data["sensor"].entities][-1]
         check_state(hass, "sensor.test011", "nighttime", p, now)
 
-    # with patch(DATE_FUNCTION_PATH, return_value=date(2021, 11, 19)) as p:
-    if 1:
         # now install workday sensor
         await init_workday_sensor(hass)
         await hass.async_block_till_done()
         await sensor.async_update_ha_state(force_refresh=True)
 
-        workday_state = hass.states.get(workday)
-        _LOGGER.warning(f"workday = {workday_state}")
+        assert p.called, "Time patch was not applied"
 
-        # assert p.called, "Time patch was not applied"
-
-        # workday_sensor = [e for e in hass.data["binary_sensor"].entities][-1]
-        # _LOGGER.warning("workday sensor is %r", workday_sensor)
+        workday_sensor = [e for e in hass.data["binary_sensor"].entities][-1]
+        _LOGGER.info(
+            "workday sensor: %r --- %r", workday_sensor, workday_sensor._obj_holidays
+        )
 
         check_state(hass, workday, "on")
 
@@ -828,17 +793,28 @@ async def disable_test_schedule_using_condition(
         now += timedelta(hours=6)  # 16:10
         await check_state_at_time(hass, sensor, now, "afternoon")
 
-    freezer.move_to(datetime(2021, 12, 25, 12))
-    # with patch(DATE_FUNCTION_PATH, return_value=date(2021, 12, 25)) as p:
-    if 1:
+    return
+
+    # still can't get this to work - workday sensor does not update
+    now = make_holiday_testtime(4, 0)
+    freezer.move_to(now)
+    with patch(TIME_FUNCTION_PATH, return_value=now) as p:
         await hass.async_block_till_done()
-        # await workday_sensor.async_update_ha_state(force_refresh=True)
+        await workday_sensor.async_update_ha_state(force_refresh=True)
 
         # assert p.called, "Time patch was not applied"
+        workday_state = hass.states.get(workday)
+        _LOGGER.info(f"workday = {workday_state}")
+        assert "2021-12-25" in repr(workday_state), workday_state
+        _LOGGER.info(f"now = {now}")
+        assert "2021-12-25" in repr(now), now
+        _LOGGER.info(
+            "workday sensor: %r --- %r", workday_sensor, workday_sensor._obj_holidays
+        )
 
         check_state(hass, workday, "off")
 
-        now = make_testtime(4, 0)
+        now = make_holiday_testtime(4, 0)
         await check_state_at_time(hass, sensor, now, "nighttime")
 
         now += timedelta(hours=3)  # 7:00
@@ -852,7 +828,7 @@ async def disable_test_schedule_using_condition(
 
 
 async def test_extra_attributes(hass: HomeAssistant):
-    configfile = "tests/../.devcontainer/schedules/fan-coil.yaml"
+    configfile = "tests/../config/schedules/fan-coil.yaml"
     sensorname = "fan_coil_heating_schedule"
 
     # switch used to toggle template values
@@ -1002,8 +978,9 @@ async def test_extra_attributes(hass: HomeAssistant):
         assert sensor._attributes["fan_mode"] == "mid"
 
 
-async def disabled_test_issue92(hass: HomeAssistant):
-    configfile = "tests/../.devcontainer/issues/issue92.yaml"
+@pytest.mark.parametrize("expected_lingering_timers", [True])
+async def test_issue92(hass: HomeAssistant, freezer: FrozenDateTimeFactory):
+    configfile = "tests/../config/issues/issue92.yaml"
 
     await init_workday_sensor(hass)
     await hass.async_block_till_done()
@@ -1012,34 +989,39 @@ async def disabled_test_issue92(hass: HomeAssistant):
     with open(configfile) as f:
         config = yaml.safe_load(f)
 
-    with patch(DATE_FUNCTION_PATH, return_value=date(2021, 11, 19)):
-        now = make_testtime(4, 0)
-        with patch(TIME_FUNCTION_PATH, return_value=now) as p:
-            await setup_test_entities(
-                hass,
-                config[0],
-            )
+    _LOGGER.warning(config)
+    now = make_testtime(4, 0)
+    freezer.move_to(now)
+    with patch(TIME_FUNCTION_PATH, return_value=now) as p:
+        await setup_test_entities(
+            hass,
+            config["sensor"][0],
+        )
 
-            assert p.called, "Time patch was not applied"
-            assert p.return_value == now, "Time patch was wrong"
+        assert p.called, "Time patch was not applied"
+        assert p.return_value == now, "Time patch was wrong"
 
-            sensor = [e for e in hass.data["sensor"].entities][-1]
+        for e in hass.data["sensor"].entities:
+            _LOGGER.warning(e)
+        sensor = [e for e in hass.data["sensor"].entities][-1]
 
-        now = make_testtime(21, 47)
-        with patch(TIME_FUNCTION_PATH, return_value=now) as p:
-            await sensor.async_update_ha_state(force_refresh=True)
+    now = make_testtime(21, 47)
+    freezer.move_to(now)
+    with patch(TIME_FUNCTION_PATH, return_value=now) as p:
+        await sensor.async_update_ha_state(force_refresh=True)
 
-        now = make_testtime(5, 30)
-        with patch(TIME_FUNCTION_PATH, return_value=now) as p:
-            # in issue 92, an assert was being thrown in find_interval
-            # HA squelches the assert, so pytest does not fail
-            # the test here fails if the assert is thrown, because the sensor value does not get updated
-            await sensor.async_update_ha_state(force_refresh=True)
-            assert sensor._attributes["light_main"] == "off"
-            assert sensor._attributes["light_subtle"] == "off"
-            assert sensor._attributes["light_bedroom"] == "off"
-            assert sensor._attributes["light_sensor"] == "dim"
-            assert sensor._attributes["light_default_brightness"] == "dim"
+    now = make_testtime(5, 30)
+    freezer.move_to(now)
+    with patch(TIME_FUNCTION_PATH, return_value=now) as p:
+        # in issue 92, an assert was being thrown in find_interval
+        # HA squelches the assert, so pytest does not fail
+        # the test here fails if the assert is thrown, because the sensor value does not get updated
+        await sensor.async_update_ha_state(force_refresh=True)
+        assert sensor._attributes["light_main"] == "off"
+        assert sensor._attributes["light_subtle"] == "off"
+        assert sensor._attributes["light_bedroom"] == "off"
+        assert sensor._attributes["light_sensor"] == "dim"
+        assert sensor._attributes["light_default_brightness"] == "dim"
 
 
 async def check_state_at_time(hass, sensor, now, value):
@@ -1058,6 +1040,8 @@ def check_state(hass, name, value, p=None, now=None):
     assert (
         entity_state.state == value
     ), f"State was wrong (actual={entity_state.state} vs expected={value})"
+    if entity_state.state == value:
+        _LOGGER.info(f"✓ State of {name} = {value} @ {now}")
     return entity_state
 
 
@@ -1148,5 +1132,20 @@ async def recalculate(hass, target, now):
         assert p.return_value == now
 
 
+# def make_testtime(h: int, m: int):
+#     return datetime(2021, 11, 20, h, m)
+
+
 def make_testtime(h: int, m: int):
-    return datetime(2021, 11, 20, h, m)
+    # return a Canadian working day a few days before Christmas
+    cal = holidays.country_holidays("CA", years=[datetime.now().year])
+    xmas = cal.get_named("Christmas Day")
+    working_day = cal.get_nth_working_day(xmas[0], -4)
+    return datetime(working_day.year, working_day.month, working_day.day, h, m)
+
+
+def make_holiday_testtime(h: int, m: int):
+    cal = holidays.country_holidays("CA", years=[datetime.now().year])
+    xmas = cal.get_named("Christmas Day")
+    xmas = xmas[0]
+    return datetime(xmas.year, xmas.month, xmas.day, h, m)

@@ -12,11 +12,6 @@ logger:
 
 sun:
 
-binary_sensor:
-  - platform: workday
-    country: CA
-    province: "ON"
-
 sensor schedules: !include_dir_merge_list schedules/
 
 homeassistant:
@@ -27,6 +22,10 @@ input_boolean:
     name: Manual mode
   vacation_mode:
     name: Vacation mode
+  workday:
+    name: Workday
+  bedroom_bedside_lamps:
+    name: Bedroom bedside lamps (Issue 92)
 
 input_datetime:
   special_event_start:
@@ -52,3 +51,28 @@ input_select:
       - "choring"
       - "pitter-patter"
       - "donny-brook"
+
+binary_sensor:
+  platform: template
+  sensors:
+    workday:
+      value_template: "{{ is_state('input_boolean.workday', 'on') }}"
+    workday_sensor:
+      value_template: "{{ is_state('input_boolean.workday', 'on') }}"
+
+light:
+  - platform: template
+    lights:
+      # for issue 92
+      bedroom_bedside_lamps:
+        value_template: "{{ is_state('input_boolean.bedroom_bedside_lamps', 'on') }}"
+        turn_on:
+          action: input_boolean.turn_on
+          target:
+            entity_id: input_boolean.bedroom_bedside_lamps
+          data: {}
+        turn_off:
+          action: input_boolean.turn_off
+          target:
+            entity_id: input_boolean.bedroom_bedside_lamps
+          data: {}
