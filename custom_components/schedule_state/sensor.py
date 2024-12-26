@@ -1082,13 +1082,17 @@ class ScheduleSensorData:
                 v = extra_attributes.get(attr, None)
                 if v is not None:
                     ex_attrs[attr] = v
+                else:
+                    _LOGGER.debug(f"skipping {attr} because value = {v}")
 
-                for attr in extra_attributes.keys():
-                    if attr not in self._attr_keys:
-                        _LOGGER.error(
-                            f"{self.name}: ignoring unknown attribute '{attr}' in service call"
-                        )
-                extra_attributes = ex_attrs
+            for attr in extra_attributes.keys():
+                if attr not in self._attr_keys:
+                    _LOGGER.error(
+                        f"{self.name}: ignoring unknown attribute '{attr}' in service call"
+                    )
+
+            extra_attributes = ex_attrs
+
         else:
             extra_attributes = {}
 
