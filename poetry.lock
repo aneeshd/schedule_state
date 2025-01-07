@@ -1481,13 +1481,13 @@ test = ["codespell (==2.3.0)", "mypy (==1.13.0)", "pre-commit (==4.0.1)", "pre-c
 
 [[package]]
 name = "holidays"
-version = "0.63"
+version = "0.64"
 description = "Open World Holidays Framework"
 optional = false
 python-versions = ">=3.9"
 files = [
-    {file = "holidays-0.63-py3-none-any.whl", hash = "sha256:f834a86635e4593eb3d8c76c9b4207ca11b200767b53cdef3468b9fe71401412"},
-    {file = "holidays-0.63.tar.gz", hash = "sha256:0e0fe872c9c4c18bbdf0ddf34990d99f077484ba21d28e14e7d1ad1643b72544"},
+    {file = "holidays-0.64-py3-none-any.whl", hash = "sha256:df5bd6efce61f2eafe235bddc847d4a9a3adeff0270711516588aeeef4ba98b7"},
+    {file = "holidays-0.64.tar.gz", hash = "sha256:c9ebd1b0391700cadeb4fab88274833ee7f1f355966e0486068ec0816122d26a"},
 ]
 
 [package.dependencies]
