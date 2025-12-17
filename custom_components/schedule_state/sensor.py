@@ -922,7 +922,11 @@ class ScheduleSensorData:
                 continue
 
             # Create condition key for grouping
-            condition_key = self._serialize_conditions(conditions)
+            try:
+                condition_key = self._serialize_conditions(conditions)
+            except TypeError:
+                condition_key = "default"
+
             if condition_key not in groups:
                 groups[condition_key] = []
 
