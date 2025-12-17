@@ -3,6 +3,7 @@ name = "schedule_state"
 version = "0.19.2"
 description = ""
 authors = ["Aneesh Dalvi <2533133+aneeshd@users.noreply.github.com>"]
+package-mode = false
 
 [tool.poetry.dependencies]
 python = ">=3.12,<3.14"
