@@ -901,6 +901,15 @@ class ScheduleSensorData:
             if not isinstance(conditions, list):
                 conditions = [conditions] if conditions else []
 
+            # Extract months from event and add to conditions
+            months = event.get("months", None) or event.get("month", None)
+            if months is not None:
+                month_condition = {
+                    "condition": "time",
+                    "month": months
+                }
+                conditions.append(month_condition)
+
             # Filter by weekday
             weekdays = self._get_weekdays_from_condition(conditions)
             if day not in weekdays:
@@ -921,6 +930,29 @@ class ScheduleSensorData:
             if None in (start, end):
                 continue
 
+            # Apply offsets if any
+            start_offset = 0
+            end_offset = 0
+            offset_eval = self.evaluate_template(event, CONF_START_OFFSET, default=0)
+            if offset_eval.success:
+                with suppress(ValueError):
+                    start_offset = float(offset_eval.result)
+
+            offset_eval = self.evaluate_template(event, CONF_END_OFFSET, default=0)
+            if offset_eval.success:
+                with suppress(ValueError):
+                    end_offset = float(offset_eval.result)
+
+            start = self.apply_offset(start, start_offset)
+            end = self.apply_offset(end, end_offset)
+
+            # Check if wrapping is allowed
+            allow_wrap_global = self.config.get(CONF_ALLOW_WRAP, False)
+            allow_wrap = event.get(CONF_ALLOW_WRAP, allow_wrap_global)
+
+            # Detect wrapping
+            wraps = start > end
+            
             # Create condition key for grouping
             try:
                 condition_key = self._serialize_conditions(conditions)
@@ -930,28 +962,80 @@ class ScheduleSensorData:
             if condition_key not in groups:
                 groups[condition_key] = []
 
-            # Create event block
-            block = {
-                "event_idx": event_idx,
-                "start": start.strftime("%H:%M"),
-                "end": end.strftime("%H:%M"),
-                "original_start": start.strftime("%H:%M"),
-                "original_end": end.strftime("%H:%M"),
-                "wraps_start": False,
-                "wraps_end": False,
-                "state_value": state,
-                "raw_state_template": self._serialize_template(event.get(CONF_STATE)),
-                "unit": event.get("unit", ""),
-                "raw_conditions": conditions,
-                "condition_text": self._format_conditions(conditions),
-                "tooltip": event.get("tooltip", ""),
-                "description": event.get(CONF_COMMENT, ""),
-                "icon": event.get(CONF_ICON, "mdi:calendar"),
-                "is_default_bg": False,
-                "z_index": 2,
-                "is_dynamic_color": self._is_dynamic_value(state),
-            }
-            groups[condition_key].append(block)
+            # Store original times for display
+            original_start = start.strftime("%H:%M")
+            original_end = end.strftime("%H:%M")
+
+            # If wrapping, create TWO blocks: one for each day
+            if wraps and allow_wrap:
+                # Block 1: start -> 23:59 (current day ends)
+                block1 = {
+                    "event_idx": event_idx,
+                    "start": start.strftime("%H:%M"),
+                    "end": "00:00",  # Midnight
+                    "original_start": original_start,
+                    "original_end": original_end,
+                    "wraps_start": False,
+                    "wraps_end": True,  # This block wraps to next day
+                    "state_value": state,
+                    "raw_state_template": self._serialize_template(event.get(CONF_STATE)),
+                    "unit": event.get("unit", ""),
+                    "raw_conditions": conditions,
+                    "condition_text": self._format_conditions(conditions),
+                    "tooltip": event.get("tooltip", ""),
+                    "description": event.get(CONF_COMMENT, ""),
+                    "icon": event.get(CONF_ICON, "mdi:calendar"),
+                    "is_default_bg": False,
+                    "z_index": 2,
+                    "is_dynamic_color": self._is_dynamic_value(state),
+                }
+                groups[condition_key].append(block1)
+
+                # Block 2: 00:00 -> end (next day starts)
+                block2 = {
+                    "event_idx": event_idx,
+                    "start": "00:00",
+                    "end": end.strftime("%H:%M"),
+                    "original_start": original_start,
+                    "original_end": original_end,
+                    "wraps_start": True,  # This block wraps from previous day
+                    "wraps_end": False,
+                    "state_value": state,
+                    "raw_state_template": self._serialize_template(event.get(CONF_STATE)),
+                    "unit": event.get("unit", ""),
+                    "raw_conditions": conditions,
+                    "condition_text": self._format_conditions(conditions),
+                    "tooltip": event.get("tooltip", ""),
+                    "description": event.get(CONF_COMMENT, ""),
+                    "icon": event.get(CONF_ICON, "mdi:calendar"),
+                    "is_default_bg": False,
+                    "z_index": 2,
+                    "is_dynamic_color": self._is_dynamic_value(state),
+                }
+                groups[condition_key].append(block2)
+            else:
+                # Normal block (no wrapping)
+                block = {
+                    "event_idx": event_idx,
+                    "start": start.strftime("%H:%M"),
+                    "end": end.strftime("%H:%M"),
+                    "original_start": original_start,
+                    "original_end": original_end,
+                    "wraps_start": False,
+                    "wraps_end": False,
+                    "state_value": state,
+                    "raw_state_template": self._serialize_template(event.get(CONF_STATE)),
+                    "unit": event.get("unit", ""),
+                    "raw_conditions": conditions,
+                    "condition_text": self._format_conditions(conditions),
+                    "tooltip": event.get("tooltip", ""),
+                    "description": event.get(CONF_COMMENT, ""),
+                    "icon": event.get(CONF_ICON, "mdi:calendar"),
+                    "is_default_bg": False,
+                    "z_index": 2,
+                    "is_dynamic_color": self._is_dynamic_value(state),
+                }
+                groups[condition_key].append(block)
 
         # Convert groups to layers
         layers = []
@@ -1040,23 +1124,26 @@ class ScheduleSensorData:
             else "default"
         )
 
-    # NEW METHOD: Format conditions as readable text
+    # NEW METHOD: Format conditions as readable text with nested support
     def _format_conditions(self, conditions):
-        """Format conditions into readable text."""
+        """Format conditions into readable text with support for nested AND/OR/NOT."""
         if not conditions:
             return ""
-
-        parts = []
-        for cond in conditions:
+        
+        def format_single_condition(cond):
+            """Format a single condition."""
             if not isinstance(cond, dict):
-                continue
-
+                return ""
+            
             cond_type = cond.get("condition")
-
+            
             if cond_type == "state":
                 entity_id = cond.get("entity_id", "")
+                if isinstance(entity_id, list):
+                    entity_id = entity_id[0] if entity_id else ""
                 state_value = cond.get("state", "")
-                parts.append(f"{entity_id} = {state_value}")
+                return f"{entity_id} == {state_value}"
+            
             elif cond_type == "numeric_state":
                 entity_id = cond.get("entity_id", "")
                 conds = []
@@ -1064,25 +1151,76 @@ class ScheduleSensorData:
                     conds.append(f"> {cond['above']}")
                 if "below" in cond:
                     conds.append(f"< {cond['below']}")
-                parts.append(f"{entity_id} {' AND '.join(conds)}")
+                return f"{entity_id} {' AND '.join(conds)}"
+            
             elif cond_type == "time":
                 time_parts = []
                 if "weekday" in cond:
                     weekdays = cond["weekday"]
                     if isinstance(weekdays, list):
-                        time_parts.append(f"Days: {', '.join(weekdays)}")
+                        abbrs = []
+                        for wd in weekdays:
+                            abbrs.append(wd.capitalize()[:3])
+                        time_parts.append(f"Days: {', '.join(abbrs)}")
                     else:
-                        time_parts.append(f"Days: {weekdays}")
+                        time_parts.append(f"Days: {weekdays.capitalize()[:3]}")
                 if "month" in cond:
                     months = cond["month"]
                     if isinstance(months, list):
-                        time_parts.append(f"Months: {', '.join(map(str, months))}")
+                        time_parts.append(f"Month: {', '.join(map(str, months))}")
                     else:
                         time_parts.append(f"Month: {months}")
-                if time_parts:
-                    parts.append(" AND ".join(time_parts))
-
-        return " AND ".join([p for p in parts if p])
+                
+                # IMPORTANT: Return joined parts, not with AND between them
+                # Because weekday and month in the same time condition are separate constraints
+                return " ".join(time_parts) if time_parts else ""
+            
+            elif cond_type == "and":
+                sub_conds = cond.get("conditions", [])
+                if not sub_conds:
+                    return ""
+                formatted = [format_single_condition(c) for c in sub_conds]
+                formatted = [f for f in formatted if f]
+                if len(formatted) == 1:
+                    return formatted[0]
+                return f"({' AND '.join(formatted)})"
+            
+            elif cond_type == "or":
+                sub_conds = cond.get("conditions", [])
+                if not sub_conds:
+                    return ""
+                formatted = [format_single_condition(c) for c in sub_conds]
+                formatted = [f for f in formatted if f]
+                if len(formatted) == 1:
+                    return formatted[0]
+                return f"({' OR '.join(formatted)})"
+            
+            elif cond_type == "not":
+                sub_cond = cond.get("condition", None)
+                if sub_cond:
+                    formatted = format_single_condition(sub_cond)
+                    return f"NOT {formatted}" if formatted else ""
+                sub_conds = cond.get("conditions", [])
+                if sub_conds:
+                    formatted = format_single_condition(sub_conds[0])
+                    return f"NOT {formatted}" if formatted else ""
+                return ""
+            
+            return ""
+        
+        # Process all conditions
+        parts = []
+        for cond in conditions:
+            formatted = format_single_condition(cond)
+            if formatted:
+                parts.append(formatted)
+        
+        if len(parts) == 0:
+            return ""
+        elif len(parts) == 1:
+            return parts[0]
+        else:
+            return " AND ".join(parts)
 
     # NEW METHOD: Detect dynamic values
     def _is_dynamic_value(self, value):
