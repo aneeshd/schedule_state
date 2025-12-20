@@ -904,10 +904,7 @@ class ScheduleSensorData:
             # Extract months from event and add to conditions
             months = event.get("months", None) or event.get("month", None)
             if months is not None:
-                month_condition = {
-                    "condition": "time",
-                    "month": months
-                }
+                month_condition = {"condition": "time", "month": months}
                 conditions.append(month_condition)
 
             # Filter by weekday
@@ -952,7 +949,7 @@ class ScheduleSensorData:
 
             # Detect wrapping
             wraps = start > end
-            
+
             # Create condition key for grouping
             try:
                 condition_key = self._serialize_conditions(conditions)
@@ -978,7 +975,9 @@ class ScheduleSensorData:
                     "wraps_start": False,
                     "wraps_end": True,  # This block wraps to next day
                     "state_value": state,
-                    "raw_state_template": self._serialize_template(event.get(CONF_STATE)),
+                    "raw_state_template": self._serialize_template(
+                        event.get(CONF_STATE)
+                    ),
                     "unit": event.get("unit", ""),
                     "raw_conditions": conditions,
                     "condition_text": self._format_conditions(conditions),
@@ -1001,7 +1000,9 @@ class ScheduleSensorData:
                     "wraps_start": True,  # This block wraps from previous day
                     "wraps_end": False,
                     "state_value": state,
-                    "raw_state_template": self._serialize_template(event.get(CONF_STATE)),
+                    "raw_state_template": self._serialize_template(
+                        event.get(CONF_STATE)
+                    ),
                     "unit": event.get("unit", ""),
                     "raw_conditions": conditions,
                     "condition_text": self._format_conditions(conditions),
@@ -1024,7 +1025,9 @@ class ScheduleSensorData:
                     "wraps_start": False,
                     "wraps_end": False,
                     "state_value": state,
-                    "raw_state_template": self._serialize_template(event.get(CONF_STATE)),
+                    "raw_state_template": self._serialize_template(
+                        event.get(CONF_STATE)
+                    ),
                     "unit": event.get("unit", ""),
                     "raw_conditions": conditions,
                     "condition_text": self._format_conditions(conditions),
@@ -1129,21 +1132,21 @@ class ScheduleSensorData:
         """Format conditions into readable text with support for nested AND/OR/NOT."""
         if not conditions:
             return ""
-        
+
         def format_single_condition(cond):
             """Format a single condition."""
             if not isinstance(cond, dict):
                 return ""
-            
+
             cond_type = cond.get("condition")
-            
+
             if cond_type == "state":
                 entity_id = cond.get("entity_id", "")
                 if isinstance(entity_id, list):
                     entity_id = entity_id[0] if entity_id else ""
                 state_value = cond.get("state", "")
                 return f"{entity_id} == {state_value}"
-            
+
             elif cond_type == "numeric_state":
                 entity_id = cond.get("entity_id", "")
                 conds = []
@@ -1152,7 +1155,7 @@ class ScheduleSensorData:
                 if "below" in cond:
                     conds.append(f"< {cond['below']}")
                 return f"{entity_id} {' AND '.join(conds)}"
-            
+
             elif cond_type == "time":
                 time_parts = []
                 if "weekday" in cond:
@@ -1170,11 +1173,11 @@ class ScheduleSensorData:
                         time_parts.append(f"Month: {', '.join(map(str, months))}")
                     else:
                         time_parts.append(f"Month: {months}")
-                
+
                 # IMPORTANT: Return joined parts, not with AND between them
                 # Because weekday and month in the same time condition are separate constraints
                 return " ".join(time_parts) if time_parts else ""
-            
+
             elif cond_type == "and":
                 sub_conds = cond.get("conditions", [])
                 if not sub_conds:
@@ -1184,7 +1187,7 @@ class ScheduleSensorData:
                 if len(formatted) == 1:
                     return formatted[0]
                 return f"({' AND '.join(formatted)})"
-            
+
             elif cond_type == "or":
                 sub_conds = cond.get("conditions", [])
                 if not sub_conds:
@@ -1194,7 +1197,7 @@ class ScheduleSensorData:
                 if len(formatted) == 1:
                     return formatted[0]
                 return f"({' OR '.join(formatted)})"
-            
+
             elif cond_type == "not":
                 sub_cond = cond.get("condition", None)
                 if sub_cond:
@@ -1205,16 +1208,16 @@ class ScheduleSensorData:
                     formatted = format_single_condition(sub_conds[0])
                     return f"NOT {formatted}" if formatted else ""
                 return ""
-            
+
             return ""
-        
+
         # Process all conditions
         parts = []
         for cond in conditions:
             formatted = format_single_condition(cond)
             if formatted:
                 parts.append(formatted)
-        
+
         if len(parts) == 0:
             return ""
         elif len(parts) == 1:
