@@ -14,6 +14,9 @@ and standard Home Assistant tools to handle the *what*.
 based on the time of day and other criteria. Home Assistant can then use the state of these
 sensors to trigger other automations.
 
+You should also check out [schedule-state-card](https://github.com/Pulpyyyy/schedule-state-card), which provides a nice
+GUI for the sensors defined with `schedule_state`.
+
 ***
 
 [![GitHub Release][releases-shield]][releases]
@@ -77,7 +80,10 @@ condition in your automations.
 
 Each state can have a custom icon.
 Pick any icon that you can find on [pictogrammers.com](https://pictogrammers.com/library/mdi/) and prefix the name with `mdi:`.
-Note: the last icon assigned to a state is used for all occurrences of that state.
+
+Note: As of 0.20.2, `schedule_state` will use the icon specified in the "active" event. If an icon was not provided, it
+will use the first icon specified for that state, defaulting to the default icon for the sensor. This is different from the
+previous behaviour, in which the last icon assigned to a state was used for all occurrences of that state.
 
 ```yaml
     events:
@@ -305,6 +311,9 @@ Here is an example of using a Jinja template in Lovelace to display the current 
 ```
 
 This example uses a [Mushroom card with a template chip](https://github.com/piitaya/lovelace-mushroom/blob/main/docs/cards/chips.md#template-chip), but the concept works with any Lovelace card that supports templates.
+
+You should also check out [schedule-state-card](https://github.com/Pulpyyyy/schedule-state-card), which provides a nice
+GUI for the sensors defined with `schedule_state`.
 
 ## Services
 

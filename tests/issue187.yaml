@@ -1,7 +1,7 @@
 # see https://github.com/aneeshd/schedule_state/issues/187
 
 - platform: schedule_state
-  name: schedule test
+  name: issue187
   refresh: "00:30:00"
   default_state: 18
   minutes_to_refresh_on_error: 1

@@ -1,0 +1,38 @@
+---
+sensor:
+- platform: schedule_state
+  name: issue350
+  events:
+  - start: "22:00"
+    end: "6:30"
+    state: '{{states("input_number.night_heat_350")}}'
+    icon: mdi:weather-night
+    allow_wrap: True
+  - start: "6:30"
+    end: "8:00"
+    state: '{{states("input_number.day_heat_350")}}'
+    icon: mdi:sun-clock
+    condition:
+      condition: state
+      entity_id: binary_sensor.workday_with_override
+      state: 'on'
+
+input_number:
+  night_heat_350:
+    initial: 18
+    min: 10
+    max: 25
+  day_heat_350:
+    initial: 18
+    min: 10
+    max: 25
+
+input_boolean:
+  workday:
+    initial: 'on'
+
+binary_sensor:
+  platform: template
+  sensors:
+    workday_with_override:
+      value_template: "{{ is_state('input_boolean.workday', 'on') }}"
