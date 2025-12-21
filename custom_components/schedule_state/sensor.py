@@ -658,8 +658,8 @@ class ScheduleSensorData:
 
         # TODO we should handle 'icon' the same as other extra attributes
         self._attr_keys = [k for k in self.extra_attributes.keys()]
-        states = {}
-        attrs = {k: dict() for k in self._attr_keys}
+        states = P.IntervalDict()
+        attrs = {k: P.IntervalDict() for k in self._attr_keys}
 
         # add an interval for the default state and attributes
         interval = P.closedopen(time.min, time.max)
@@ -766,9 +766,8 @@ class ScheduleSensorData:
             if icon.success:
                 self.icon_map[state] = icon.result
 
-            # Layer on the new interval to the schedule
-            for interval in intervals:
-                self._add_interval(states, attrs, event, state, interval)
+            # Layer on the new intervals to the schedule
+            self._add_interval(states, attrs, event, state, intervals)
 
         _LOGGER.info(f"{self.name}:\n{pformat(states)}\n{pformat(attrs)}")
         self._states = states
@@ -1243,23 +1242,23 @@ class ScheduleSensorData:
         )
 
     def _get_intervals(self, start, end, allow_wrap):
-        ret = []
+        ret = P.Interval()
         error = None
 
         if start < end:
-            ret.append(P.closedopen(start, end))
+            ret = ret.union(P.closedopen(start, end))
         elif start == end:
             pass
         elif allow_wrap:
-            ret.append(P.closedopen(start, time.max))
-            ret.append(P.closedopen(time.min, end))
+            ret = ret.union(P.closedopen(start, time.max))
+            ret = ret.union(P.closedopen(time.min, end))
         else:
             error = f"error with event definition - start:{start} > end:{end}"
 
         return ret, error
 
     def _add_interval(self, states, attrs, event, state, interval) -> None:
-        self._handle_layers(states, state, interval)
+        states[interval] = state
 
         # process custom attributes
         for xattr in self._attr_keys:
@@ -1287,32 +1286,7 @@ class ScheduleSensorData:
                 ).result
 
             if val is not None:
-                self._handle_layers(
-                    attrs[xattr],
-                    val,
-                    interval,
-                )
-
-    def _handle_layers(self, states, this_attr, interval) -> None:
-        for attr in states:
-            self._handle_layer(states, attr, this_attr, interval)
-
-        if this_attr not in states:
-            states[this_attr] = interval
-        else:
-            states[this_attr] = states[this_attr] | interval
-
-    def _handle_layer(self, states, attr, this_attr, interval) -> None:
-        if attr == this_attr:
-            return
-
-        overlap = interval & states[attr]
-        if interval.overlaps(states[attr]):
-            _LOGGER.debug(
-                f"{self.name}: {this_attr} overlaps with existing {attr}: {overlap}"
-            )
-            states[attr] -= overlap
-            _LOGGER.debug(f"{self.name}: ... reducing {attr} to {states[attr]}")
+                attrs[xattr][interval] = val
 
     async def get_start(self, event) -> time:
         template_eval = self.evaluate_template(
@@ -1499,16 +1473,12 @@ class ScheduleSensorData:
             self.attributes[attr] = val
 
     def find_interval(self, states, nu):
-        for state in states:
-            if nu in states[state]:
-                for interval in states[state]._intervals:
-                    if nu >= interval.lower and nu < interval.upper:
-                        return (
-                            state,
-                            interval,
-                        )
+        for k, v in states.items():
+            for interval in k._intervals:
+                if nu >= interval.lower and nu < interval.upper:
+                    return v, interval
 
-        assert False
+        _LOGGER.error(f"{nu} not in {states}")
         return None, None
 
     def set_override(self, id, state, start, end, duration, icon, extra_attributes):
