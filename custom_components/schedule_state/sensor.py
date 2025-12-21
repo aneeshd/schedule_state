@@ -23,6 +23,7 @@ from homeassistant.const import (
     CONF_NAME,
     CONF_STATE,
     EVENT_HOMEASSISTANT_START,
+    MATCH_ALL,
     SERVICE_TOGGLE,
     SERVICE_TURN_OFF,
     SERVICE_TURN_ON,
@@ -416,6 +417,8 @@ async def async_setup_services(hass: HomeAssistant):
 class ScheduleSensor(SensorEntity, RestoreEntity):
     """Representation of a sensor that returns a state name based on a predefined schedule."""
 
+    _unrecorded_attributes = frozenset({MATCH_ALL})
+
     def __init__(self, hass, name, data, config):
         """Initialize the sensor."""
         self.data = data
@@ -603,6 +606,7 @@ class ScheduleSensorData:
         self.error_icon = None
         self.config = config
         self._states = {}
+        self._icons = {}
         self._refresh_time = None
         self.overrides = []
         self.known_states = set()
@@ -636,6 +640,7 @@ class ScheduleSensorData:
             CONF_ICON,
             default=DEFAULT_ICON,
         ).result
+        _LOGGER.debug(f"default icon is {self.default_icon}")
 
         # FIXME templates not currently supported
         self.error_icon = self.evaluate_template(
@@ -653,15 +658,26 @@ class ScheduleSensorData:
 
         allow_wrap_global = self.config.get(CONF_ALLOW_WRAP, False)
 
-        # TODO we should handle 'icon' the same as other extra attributes
+        # use an IntervalDict to keep track of time intervals vs state values
+        states = P.IntervalDict()
+
+        # create an IntervalDict for each extra attribute
         self._attr_keys = [k for k in self.extra_attributes.keys()]
-        states = {}
-        attrs = {k: dict() for k in self._attr_keys}
+        attrs = {k: P.IntervalDict() for k in self._attr_keys}
+
+        # icons are handled differently from other extra attributes, mostly just because their config is handled differently
+        icons = P.IntervalDict()
 
         # add an interval for the default state and attributes
         interval = P.closedopen(time.min, time.max)
         self._add_interval(
-            states, attrs, self.extra_attributes, self.default_state, interval
+            interval,
+            self.default_state,
+            self.default_icon,
+            self.extra_attributes,
+            states,
+            icons,
+            attrs,
         )
 
         # now process all defined events and overrides
@@ -756,19 +772,28 @@ class ScheduleSensorData:
                 _LOGGER.error(f"{self.name}: {state}: {error} - skipping")
                 continue
 
+            state_icon = self.icon_map.get(state, self.default_icon)
             icon = self.evaluate_template(
                 event,
                 CONF_ICON,
+                state_icon,
             )
             if icon.success:
-                self.icon_map[state] = icon.result
+                state_icon = icon.result
+                if state not in self.icon_map:
+                    # set default icon for this state; this will override the default icon for the schedule_state
+                    self.icon_map[state] = icon.result
 
-            # Layer on the new interval to the schedule
-            for interval in intervals:
-                self._add_interval(states, attrs, event, state, interval)
+            # Layer on the new intervals to the schedule
+            self._add_interval(
+                intervals, state, state_icon, event, states, icons, attrs
+            )
 
-        _LOGGER.info(f"{self.name}:\n{pformat(states)}\n{pformat(attrs)}")
+        _LOGGER.info(
+            f"\n{pformat(dict(name=self.name, states=states, icons=icons, attrs=attrs))}"
+        )
         self._states = states
+        self._icons = icons
         self._custom_attributes = attrs
         self._refresh_time = dt.as_local(dt_now())
 
@@ -983,7 +1008,7 @@ class ScheduleSensorData:
                     "condition_text": self._format_conditions(conditions),
                     "tooltip": event.get("tooltip", ""),
                     "description": event.get(CONF_COMMENT, ""),
-                    "icon": event.get(CONF_ICON, "mdi:calendar"),
+                    "icon": event.get(CONF_ICON, DEFAULT_ICON),
                     "is_default_bg": False,
                     "z_index": 2,
                     "is_dynamic_color": self._is_dynamic_value(state),
@@ -1008,7 +1033,7 @@ class ScheduleSensorData:
                     "condition_text": self._format_conditions(conditions),
                     "tooltip": event.get("tooltip", ""),
                     "description": event.get(CONF_COMMENT, ""),
-                    "icon": event.get(CONF_ICON, "mdi:calendar"),
+                    "icon": event.get(CONF_ICON, DEFAULT_ICON),
                     "is_default_bg": False,
                     "z_index": 2,
                     "is_dynamic_color": self._is_dynamic_value(state),
@@ -1033,7 +1058,7 @@ class ScheduleSensorData:
                     "condition_text": self._format_conditions(conditions),
                     "tooltip": event.get("tooltip", ""),
                     "description": event.get(CONF_COMMENT, ""),
-                    "icon": event.get(CONF_ICON, "mdi:calendar"),
+                    "icon": event.get(CONF_ICON, DEFAULT_ICON),
                     "is_default_bg": False,
                     "z_index": 2,
                     "is_dynamic_color": self._is_dynamic_value(state),
@@ -1240,23 +1265,25 @@ class ScheduleSensorData:
         )
 
     def _get_intervals(self, start, end, allow_wrap):
-        ret = []
+        ret = P.Interval()
         error = None
 
         if start < end:
-            ret.append(P.closedopen(start, end))
+            ret = ret.union(P.closedopen(start, end))
         elif start == end:
             pass
         elif allow_wrap:
-            ret.append(P.closedopen(start, time.max))
-            ret.append(P.closedopen(time.min, end))
+            ret = ret.union(P.closedopen(start, time.max))
+            ret = ret.union(P.closedopen(time.min, end))
         else:
             error = f"error with event definition - start:{start} > end:{end}"
 
         return ret, error
 
-    def _add_interval(self, states, attrs, event, state, interval) -> None:
-        self._handle_layers(states, state, interval)
+    def _add_interval(self, interval, state, icon, event, states, icons, attrs) -> None:
+        _LOGGER.debug(f"adding {interval} state={state} icon={icon}")
+        states[interval] = state
+        icons[interval] = icon
 
         # process custom attributes
         for xattr in self._attr_keys:
@@ -1284,32 +1311,7 @@ class ScheduleSensorData:
                 ).result
 
             if val is not None:
-                self._handle_layers(
-                    attrs[xattr],
-                    val,
-                    interval,
-                )
-
-    def _handle_layers(self, states, this_attr, interval) -> None:
-        for attr in states:
-            self._handle_layer(states, attr, this_attr, interval)
-
-        if this_attr not in states:
-            states[this_attr] = interval
-        else:
-            states[this_attr] = states[this_attr] | interval
-
-    def _handle_layer(self, states, attr, this_attr, interval) -> None:
-        if attr == this_attr:
-            return
-
-        overlap = interval & states[attr]
-        if interval.overlaps(states[attr]):
-            _LOGGER.debug(
-                f"{self.name}: {this_attr} overlaps with existing {attr}: {overlap}"
-            )
-            states[attr] -= overlap
-            _LOGGER.debug(f"{self.name}: ... reducing {attr} to {states[attr]}")
+                attrs[xattr][interval] = val
 
     async def get_start(self, event) -> time:
         template_eval = self.evaluate_template(
@@ -1466,7 +1468,9 @@ class ScheduleSensorData:
         self.value = state
         self.attributes["start"] = interval.lower
         self.attributes["end"] = interval.upper
-        self.attributes["icon"] = self.icon_map.get(state, None)
+        icon, _ = self.find_interval(self._icons, nu)
+        # it should never have to look at icon_map anymore
+        self.attributes["icon"] = icon or self.icon_map.get(state, None)
 
         look_for_next_state = True
         next_nu = (datetime.combine(now, interval.upper) + timedelta(seconds=1)).time()
@@ -1496,16 +1500,12 @@ class ScheduleSensorData:
             self.attributes[attr] = val
 
     def find_interval(self, states, nu):
-        for state in states:
-            if nu in states[state]:
-                for interval in states[state]._intervals:
-                    if nu >= interval.lower and nu < interval.upper:
-                        return (
-                            state,
-                            interval,
-                        )
+        for k, v in states.items():
+            for interval in k._intervals:
+                if nu >= interval.lower and nu < interval.upper:
+                    return v, interval
 
-        assert False
+        _LOGGER.error(f"{nu} not in {states}")
         return None, None
 
     def set_override(self, id, state, start, end, duration, icon, extra_attributes):
