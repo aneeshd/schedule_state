@@ -23,6 +23,7 @@ from homeassistant.const import (
     CONF_NAME,
     CONF_STATE,
     EVENT_HOMEASSISTANT_START,
+    MATCH_ALL,
     SERVICE_TOGGLE,
     SERVICE_TURN_OFF,
     SERVICE_TURN_ON,
@@ -415,6 +416,8 @@ async def async_setup_services(hass: HomeAssistant):
 
 class ScheduleSensor(SensorEntity, RestoreEntity):
     """Representation of a sensor that returns a state name based on a predefined schedule."""
+
+    _unrecorded_attributes = frozenset({MATCH_ALL})
 
     def __init__(self, hass, name, data, config):
         """Initialize the sensor."""
