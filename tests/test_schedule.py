@@ -20,6 +20,7 @@ from homeassistant.const import (
     SERVICE_TOGGLE,
     SERVICE_TURN_OFF,
     SERVICE_TURN_ON,
+    WEEKDAYS,
 )
 from homeassistant.core import HomeAssistant
 import pytest
@@ -59,6 +60,22 @@ async def setup_test_entities(hass: HomeAssistant, config_dict: dict[str, Any]) 
     )
     await hass.async_block_till_done()
     assert ret, "Setup failed"
+
+    if config_dict.get("platform") == "schedule_state":
+        # do some basic checks on "extended attributes" used for schedule-state-card
+        sensor = [e for e in hass.data["sensor"].entities][-1]
+
+        # check that all events were serialized (does not check correctness)
+        assert len(config_dict.get("events", [])) == len(sensor._attributes["events"])
+
+        layers = sensor._attributes["layers"]
+
+        # check that there is a layer for each day
+        for day in WEEKDAYS:
+            assert day in layers
+            layer = layers[day]
+            # check that the last layer is the default layer
+            assert layer[-1]["is_default_layer"] is True
 
 
 async def test_blank_setup(hass: HomeAssistant) -> None:
