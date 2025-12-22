@@ -6,7 +6,7 @@ from homeassistant import setup
 from homeassistant.core import HomeAssistant
 import yaml
 
-from .test_schedule import TIME_FUNCTION_PATH, make_testtime, setup_test_entities
+from .test_schedule import TIME_FUNCTION_PATH, make_testtime, setup_test_sensor
 
 
 async def test_issue187(hass: HomeAssistant):
@@ -26,7 +26,7 @@ async def test_issue187(hass: HomeAssistant):
 
     now = make_testtime(4, 0)
     with patch(TIME_FUNCTION_PATH, return_value=now) as p:
-        await setup_test_entities(
+        await setup_test_sensor(
             hass,
             config[0],
         )

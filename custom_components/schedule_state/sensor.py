@@ -80,6 +80,8 @@ _LOGGER = logging.getLogger(__name__)
 
 _CONDITION_SCHEMA = vol.All(cv.ensure_list, [cv.CONDITION_SCHEMA])
 
+FORCE_NEW_LAYER = (0, "~~~force-new-layer~~~")
+
 
 # FIXME not sure how to accept templates for icons
 # IconSchema = vol.Any(
@@ -894,8 +896,11 @@ class ScheduleSensorData:
         """Build event layers for a given day, grouped by identical conditions."""
         groups = OrderedDict()
 
+        prev_layer = FORCE_NEW_LAYER
         for event_idx, event in enumerate(self.events + self.overrides):
-            await self._build_layers_for_event(groups, event_idx, event, day)
+            prev_layer = await self._build_layers_for_event(
+                groups, event_idx, event, day, prev_layer
+            )
 
         # Convert groups to layers
         layers = []
@@ -915,16 +920,24 @@ class ScheduleSensorData:
 
         return layers
 
-    async def _build_layers_for_event(self, groups, event_idx, event, day):
+    async def _build_layers_for_event(self, groups, event_idx, event, day, prev_layer):
         try:
-            await self._build_layers_for_event_unsafe(groups, event_idx, event, day)
+            return await self._build_layers_for_event_unsafe(
+                groups, event_idx, event, day, prev_layer
+            )
 
-        except Exception:
+        except Exception as e:
             # Skip events that cannot be processed
-            _LOGGER.error(f"{self.name}: could not process event {event}")
-            return
+            _LOGGER.error(f"{self.name}: could not process event {event} - {e}")
+            import traceback
 
-    async def _build_layers_for_event_unsafe(self, groups, event_idx, event, day):
+            error_msg = traceback.format_exc()
+            _LOGGER.error(error_msg)
+            return FORCE_NEW_LAYER
+
+    async def _build_layers_for_event_unsafe(
+        self, groups, event_idx, event, day, prev_layer
+    ):
         conditions = event.get(CONF_CONDITION, []) or []
         if not isinstance(conditions, list):
             conditions = [conditions] if conditions else []
@@ -938,7 +951,7 @@ class ScheduleSensorData:
         # Filter by weekday
         weekdays = self._get_weekdays_from_condition(conditions)
         if day not in weekdays:
-            return
+            return FORCE_NEW_LAYER
 
         # It would be nice to refactor with process_events() - lots of duplication
         # Evaluate state
@@ -946,18 +959,18 @@ class ScheduleSensorData:
             event, CONF_STATE, default=self.default_state
         )
         if not state_eval.success:
-            return
+            return FORCE_NEW_LAYER
 
         state = state_eval.result
 
         # Get start/end times - EVALUATE TEMPLATES
         start = await self.get_start(event)
         if start is None:
-            return
+            return FORCE_NEW_LAYER
 
         end = await self.get_end(event)
         if end is None:
-            return
+            return FORCE_NEW_LAYER
 
         # Apply offsets - EVALUATE TEMPLATES FOR OFFSETS
         start_offset = 0
@@ -985,7 +998,11 @@ class ScheduleSensorData:
         wraps = start > end
 
         # Create condition key for grouping ("default" if no conditions, or "unknown" if an error occurs)
-        condition_key = self._serialize_conditions(conditions)
+        new_layer = self._serialize_conditions(conditions)
+        if new_layer == prev_layer[1]:
+            condition_key = prev_layer[0]
+        else:
+            condition_key = str(event_idx)
         if condition_key not in groups:
             groups[condition_key] = []
 
@@ -1064,6 +1081,8 @@ class ScheduleSensorData:
                 "is_dynamic_color": self._is_dynamic_value(state),
             }
             groups[condition_key].append(block)
+
+        return (condition_key, new_layer)
 
     # NEW METHOD: Create default layer
     def _create_default_layer(self):

@@ -15,7 +15,7 @@ from .test_schedule import (
     TIME_FUNCTION_PATH,
     check_state_at_time,
     make_testtime,
-    setup_test_entities,
+    setup_test_sensor,
 )
 
 
@@ -77,7 +77,7 @@ async def test_issue188(hass: HomeAssistant):
         "homeassistant.helpers.restore_state.RestoreEntity.async_get_last_extra_data",
         return_value=stored_overrides,
     ):
-        await setup_test_entities(
+        await setup_test_sensor(
             hass,
             config[0],
         )

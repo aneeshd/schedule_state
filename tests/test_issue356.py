@@ -3,7 +3,7 @@ import logging
 from homeassistant.core import HomeAssistant
 import yaml
 
-from .test_schedule import check_state, make_testtime, set_override, setup_test_entities
+from .test_schedule import check_state, make_testtime, set_override, setup_test_sensor
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -12,7 +12,7 @@ async def test_issue356(hass: HomeAssistant):
     with open("tests/../config/issues/issue356.yaml") as f:
         config = yaml.safe_load(f)
 
-    await setup_test_entities(
+    await setup_test_sensor(
         hass,
         config["sensor"][0],
     )
