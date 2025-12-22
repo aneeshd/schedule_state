@@ -12,6 +12,7 @@ import hashlib
 import locale
 import logging
 from pprint import pformat
+import re
 from typing import Any, NamedTuple, Optional
 
 from homeassistant.components.sensor import PLATFORM_SCHEMA, SensorEntity
@@ -29,6 +30,7 @@ from homeassistant.const import (
     SERVICE_TURN_ON,
     STATE_OFF,
     STATE_ON,
+    WEEKDAYS,
 )
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import (
@@ -640,7 +642,6 @@ class ScheduleSensorData:
             CONF_ICON,
             default=DEFAULT_ICON,
         ).result
-        _LOGGER.debug(f"default icon is {self.default_icon}")
 
         # FIXME templates not currently supported
         self.error_icon = self.evaluate_template(
@@ -789,9 +790,6 @@ class ScheduleSensorData:
                 intervals, state, state_icon, event, states, icons, attrs
             )
 
-        _LOGGER.info(
-            f"\n{pformat(dict(name=self.name, states=states, icons=icons, attrs=attrs))}"
-        )
         self._states = states
         self._icons = icons
         self._custom_attributes = attrs
@@ -804,83 +802,64 @@ class ScheduleSensorData:
             len(layers) for layers in self.layers_by_day.values()
         )
         self.last_update_time = dt.as_local(dt_now()).isoformat()
+        _LOGGER.info(
+            f"\n{pformat(dict(name=self.name, states=states, icons=icons, attrs=attrs))}"
+        )
+        # _LOGGER.debug(
+        #     f"\n{pformat(dict(layers=self.layers_by_day, events=self.events_list))}"
+        # )
 
     # NEW METHOD: Serialize events list
     async def _serialize_events_list(self):
         """Serialize events list to JSON-compatible format."""
         serialized_events = []
         for event in self.events + self.overrides:
-            serialized_event = {}
-            for key, value in event.items():
-                if isinstance(value, Template):
-                    # Convert Template to string representation
-                    serialized_event[key] = (
-                        str(value.template)
-                        if hasattr(value, "template")
-                        else str(value)
-                    )
-                elif isinstance(value, time):
-                    # Convert time to string
-                    serialized_event[key] = value.isoformat()
-                elif isinstance(value, datetime):
-                    # Convert datetime to ISO format
-                    serialized_event[key] = value.isoformat()
-                elif isinstance(value, list):
-                    # Recursively serialize lists
-                    serialized_event[key] = self._serialize_list(value)
-                elif isinstance(value, dict):
-                    # Recursively serialize dicts
-                    serialized_event[key] = self._serialize_dict(value)
-                elif isinstance(value, (str, int, float, bool, type(None))):
-                    # Already JSON serializable primitives
-                    serialized_event[key] = value
-                else:
-                    # Convert any other type to string
-                    serialized_event[key] = str(value)
-            serialized_events.append(serialized_event)
+            serialized_event = self._serialize_dict(event)
+            if serialized_event:  # Only add if event has serializable content
+                serialized_events.append(serialized_event)
+
         return serialized_events
 
     def _serialize_list(self, lst):
         """Recursively serialize a list to JSON-compatible format."""
-        serialized = []
+        ret = []
         for item in lst:
-            if isinstance(item, Template):
-                serialized.append(
-                    str(item.template) if hasattr(item, "template") else str(item)
-                )
-            elif isinstance(item, (time, datetime)):
-                serialized.append(item.isoformat())
-            elif isinstance(item, list):
-                serialized.append(self._serialize_list(item))
-            elif isinstance(item, dict):
-                serialized.append(self._serialize_dict(item))
-            elif isinstance(item, (str, int, float, bool, type(None))):
-                serialized.append(item)
-            else:
-                serialized.append(str(item))
-        return serialized
+            serialized, value = self._serialize_item(item)
+            if serialized:  # Only add if serialization succeeded
+                ret.append(value)
+        return ret
 
     def _serialize_dict(self, dct):
         """Recursively serialize a dict to JSON-compatible format."""
-        serialized = {}
-        for key, value in dct.items():
-            if isinstance(value, (Template, time, datetime)):
-                serialized[key] = (
-                    self._serialize_template(value)
-                    if isinstance(value, Template)
-                    else value.isoformat()
-                )
-            elif isinstance(value, (list, dict)):
-                serialized[key] = (
-                    self._serialize_list(value)
-                    if isinstance(value, list)
-                    else self._serialize_dict(value)
-                )
-            elif isinstance(value, (str, int, float, bool, type(None))):
-                serialized[key] = value
+        ret = {}
+        for key, item in dct.items():
+            serialized, value = self._serialize_item(item)
+            if serialized:  # Only add if serialization succeeded
+                ret[key] = value
+        return ret
+
+    def _serialize_item(self, item):
+        """Serialize an item to JSON-compatible format."""
+        serialized = True
+        value = None
+        try:
+            if isinstance(item, Template):
+                value = self._serialize_template(item)
+            elif isinstance(item, (time, datetime)):
+                value = item.isoformat()
+            elif isinstance(item, list):
+                value = self._serialize_list(item)
+            elif isinstance(item, dict):
+                value = self._serialize_dict(item)
+            elif isinstance(item, (str, int, float, bool, type(None))):
+                value = item
             else:
-                serialized[key] = str(value)
-        return serialized
+                value = str(item)
+        except Exception:
+            # Skip items that cannot be serialized to maintain valid JSON
+            _LOGGER.error(f"{self.name}: could not serialize {item}")
+            serialized = False
+        return serialized, value
 
     # NEW METHOD: Serialize template to string
     def _serialize_template(self, template_obj):
@@ -888,29 +867,23 @@ class ScheduleSensorData:
         if template_obj is None:
             return ""
 
-        if isinstance(template_obj, Template):
-            # Extract the template string
-            if hasattr(template_obj, "template"):
-                return str(template_obj.template)
-            else:
-                # Fallback: try to get a reasonable string representation
-                template_str = str(template_obj)
-                # Remove the non-serializable wrapper text
-                if "Template<template=" in template_str:
-                    # Extract just the template part
-                    return (
-                        template_str.split("template=")[1]
-                        .split(" renders=")[0]
-                        .strip("()")
-                    )
-                return template_str
-
-        return str(template_obj)
+        try:
+            if isinstance(template_obj, Template):
+                # Try to extract the template string
+                if hasattr(template_obj, "template"):
+                    return str(template_obj.template)
+                else:
+                    # Fallback: convert to string
+                    return str(template_obj)
+            return str(template_obj)
+        except Exception:
+            # Return empty string if serialization fails
+            return ""
 
     # NEW METHOD: Build layers structure
     async def _build_layers_structure(self):
         """Build layers structure organized by day."""
-        days = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+        days = WEEKDAYS
         layers_by_day = {}
         for day in days:
             layers_by_day[day] = await self._build_layers_for_day(day)
@@ -922,148 +895,7 @@ class ScheduleSensorData:
         groups = OrderedDict()
 
         for event_idx, event in enumerate(self.events + self.overrides):
-            conditions = event.get(CONF_CONDITION, []) or []
-            if not isinstance(conditions, list):
-                conditions = [conditions] if conditions else []
-
-            # Extract months from event and add to conditions
-            months = event.get("months", None) or event.get("month", None)
-            if months is not None:
-                month_condition = {"condition": "time", "month": months}
-                conditions.append(month_condition)
-
-            # Filter by weekday
-            weekdays = self._get_weekdays_from_condition(conditions)
-            if day not in weekdays:
-                continue
-
-            # Evaluate state
-            state_eval = self.evaluate_template(
-                event, CONF_STATE, default=self.default_state
-            )
-            if not state_eval.success:
-                continue
-
-            state = state_eval.result
-
-            # Get start/end times
-            start = await self.get_start(event)
-            end = await self.get_end(event)
-            if None in (start, end):
-                continue
-
-            # Apply offsets if any
-            start_offset = 0
-            end_offset = 0
-            offset_eval = self.evaluate_template(event, CONF_START_OFFSET, default=0)
-            if offset_eval.success:
-                with suppress(ValueError):
-                    start_offset = float(offset_eval.result)
-
-            offset_eval = self.evaluate_template(event, CONF_END_OFFSET, default=0)
-            if offset_eval.success:
-                with suppress(ValueError):
-                    end_offset = float(offset_eval.result)
-
-            start = self.apply_offset(start, start_offset)
-            end = self.apply_offset(end, end_offset)
-
-            # Check if wrapping is allowed
-            allow_wrap_global = self.config.get(CONF_ALLOW_WRAP, False)
-            allow_wrap = event.get(CONF_ALLOW_WRAP, allow_wrap_global)
-
-            # Detect wrapping
-            wraps = start > end
-
-            # Create condition key for grouping
-            try:
-                condition_key = self._serialize_conditions(conditions)
-            except TypeError:
-                condition_key = "default"
-
-            if condition_key not in groups:
-                groups[condition_key] = []
-
-            # Store original times for display
-            original_start = start.strftime("%H:%M")
-            original_end = end.strftime("%H:%M")
-
-            # If wrapping, create TWO blocks: one for each day
-            if wraps and allow_wrap:
-                # Block 1: start -> 23:59 (current day ends)
-                block1 = {
-                    "event_idx": event_idx,
-                    "start": start.strftime("%H:%M"),
-                    "end": "00:00",  # Midnight
-                    "original_start": original_start,
-                    "original_end": original_end,
-                    "wraps_start": False,
-                    "wraps_end": True,  # This block wraps to next day
-                    "state_value": state,
-                    "raw_state_template": self._serialize_template(
-                        event.get(CONF_STATE)
-                    ),
-                    "unit": event.get("unit", ""),
-                    "raw_conditions": conditions,
-                    "condition_text": self._format_conditions(conditions),
-                    "tooltip": event.get("tooltip", ""),
-                    "description": event.get(CONF_COMMENT, ""),
-                    "icon": event.get(CONF_ICON, DEFAULT_ICON),
-                    "is_default_bg": False,
-                    "z_index": 2,
-                    "is_dynamic_color": self._is_dynamic_value(state),
-                }
-                groups[condition_key].append(block1)
-
-                # Block 2: 00:00 -> end (next day starts)
-                block2 = {
-                    "event_idx": event_idx,
-                    "start": "00:00",
-                    "end": end.strftime("%H:%M"),
-                    "original_start": original_start,
-                    "original_end": original_end,
-                    "wraps_start": True,  # This block wraps from previous day
-                    "wraps_end": False,
-                    "state_value": state,
-                    "raw_state_template": self._serialize_template(
-                        event.get(CONF_STATE)
-                    ),
-                    "unit": event.get("unit", ""),
-                    "raw_conditions": conditions,
-                    "condition_text": self._format_conditions(conditions),
-                    "tooltip": event.get("tooltip", ""),
-                    "description": event.get(CONF_COMMENT, ""),
-                    "icon": event.get(CONF_ICON, DEFAULT_ICON),
-                    "is_default_bg": False,
-                    "z_index": 2,
-                    "is_dynamic_color": self._is_dynamic_value(state),
-                }
-                groups[condition_key].append(block2)
-            else:
-                # Normal block (no wrapping)
-                block = {
-                    "event_idx": event_idx,
-                    "start": start.strftime("%H:%M"),
-                    "end": end.strftime("%H:%M"),
-                    "original_start": original_start,
-                    "original_end": original_end,
-                    "wraps_start": False,
-                    "wraps_end": False,
-                    "state_value": state,
-                    "raw_state_template": self._serialize_template(
-                        event.get(CONF_STATE)
-                    ),
-                    "unit": event.get("unit", ""),
-                    "raw_conditions": conditions,
-                    "condition_text": self._format_conditions(conditions),
-                    "tooltip": event.get("tooltip", ""),
-                    "description": event.get(CONF_COMMENT, ""),
-                    "icon": event.get(CONF_ICON, DEFAULT_ICON),
-                    "is_default_bg": False,
-                    "z_index": 2,
-                    "is_dynamic_color": self._is_dynamic_value(state),
-                }
-                groups[condition_key].append(block)
+            await self._build_layers_for_event(groups, event_idx, event, day)
 
         # Convert groups to layers
         layers = []
@@ -1080,7 +912,158 @@ class ScheduleSensorData:
 
         # Add default layer
         layers.append(self._create_default_layer())
+
         return layers
+
+    async def _build_layers_for_event(self, groups, event_idx, event, day):
+        try:
+            await self._build_layers_for_event_unsafe(groups, event_idx, event, day)
+
+        except Exception:
+            # Skip events that cannot be processed
+            _LOGGER.error(f"{self.name}: could not process event {event}")
+            return
+
+    async def _build_layers_for_event_unsafe(self, groups, event_idx, event, day):
+        conditions = event.get(CONF_CONDITION, []) or []
+        if not isinstance(conditions, list):
+            conditions = [conditions] if conditions else []
+
+        # Extract months from event and add to conditions
+        months = event.get("months", None) or event.get("month", None)
+        if months is not None:
+            month_condition = {"condition": "time", "month": months}
+            conditions.append(month_condition)
+
+        # Filter by weekday
+        weekdays = self._get_weekdays_from_condition(conditions)
+        if day not in weekdays:
+            return
+
+        # It would be nice to refactor with process_events() - lots of duplication
+        # Evaluate state
+        state_eval = self.evaluate_template(
+            event, CONF_STATE, default=self.default_state
+        )
+        if not state_eval.success:
+            return
+
+        state = state_eval.result
+
+        # Get start/end times - EVALUATE TEMPLATES
+        start = await self.get_start(event)
+        if start is None:
+            return
+
+        end = await self.get_end(event)
+        if end is None:
+            return
+
+        # Apply offsets - EVALUATE TEMPLATES FOR OFFSETS
+        start_offset = 0
+        end_offset = 0
+
+        offset_eval = self.evaluate_template(event, CONF_START_OFFSET, default=0)
+        if offset_eval.success:
+            with suppress(ValueError):
+                start_offset = float(offset_eval.result)
+
+        offset_eval = self.evaluate_template(event, CONF_END_OFFSET, default=0)
+        if offset_eval.success:
+            with suppress(ValueError):
+                end_offset = float(offset_eval.result)
+
+        # Apply the offsets to start and end times
+        start = self.apply_offset(start, start_offset)
+        end = self.apply_offset(end, end_offset)
+
+        # Check if wrapping is allowed
+        allow_wrap_global = self.config.get(CONF_ALLOW_WRAP, False)
+        allow_wrap = event.get(CONF_ALLOW_WRAP, allow_wrap_global)
+
+        # Detect wrapping
+        wraps = start > end
+
+        # Create condition key for grouping ("default" if no conditions, or "unknown" if an error occurs)
+        condition_key = self._serialize_conditions(conditions)
+        if condition_key not in groups:
+            groups[condition_key] = []
+
+        # Store original times for display (AFTER offset application)
+        # This is used to show original times for wrapped events
+        original_start = start.strftime("%H:%M")
+        original_end = end.strftime("%H:%M")
+
+        # Format condition text with error handling
+        condition_text = self._format_conditions(conditions)
+
+        # Serialize raw state template
+        raw_state_template = self._serialize_template(event.get(CONF_STATE))
+
+        # Serialize raw conditions
+        raw_conditions = self._serialize_list(conditions)
+
+        # If wrapping, create TWO blocks: one for each day
+        if wraps and allow_wrap:
+            # Block 1: start -> 00:00 (current day ends)
+            block1 = {
+                "event_idx": event_idx,
+                "start": start.strftime("%H:%M"),
+                "end": "00:00",
+                "original_start": original_start,
+                "original_end": original_end,
+                "wraps_start": False,
+                "wraps_end": True,
+                "state_value": state,
+                "raw_state_template": raw_state_template,
+                "raw_conditions": raw_conditions,
+                "condition_text": condition_text,
+                "icon": event.get(CONF_ICON, DEFAULT_ICON),
+                "is_default_bg": False,
+                "z_index": 2,
+                "is_dynamic_color": self._is_dynamic_value(state),
+            }
+            groups[condition_key].append(block1)
+
+            # Block 2: 00:00 -> end (next day starts)
+            block2 = {
+                "event_idx": event_idx,
+                "start": "00:00",
+                "end": end.strftime("%H:%M"),
+                "original_start": original_start,
+                "original_end": original_end,
+                "wraps_start": True,
+                "wraps_end": False,
+                "state_value": state,
+                "raw_state_template": raw_state_template,
+                "raw_conditions": raw_conditions,
+                "condition_text": condition_text,
+                "icon": event.get(CONF_ICON, DEFAULT_ICON),
+                "is_default_bg": False,
+                "z_index": 2,
+                "is_dynamic_color": self._is_dynamic_value(state),
+            }
+            groups[condition_key].append(block2)
+        elif not wraps:
+            # Normal block (no wrapping)
+            block = {
+                "event_idx": event_idx,
+                "start": start.strftime("%H:%M"),
+                "end": end.strftime("%H:%M"),
+                "original_start": original_start,
+                "original_end": original_end,
+                "wraps_start": False,
+                "wraps_end": False,
+                "state_value": state,
+                "raw_state_template": raw_state_template,
+                "raw_conditions": raw_conditions,
+                "condition_text": condition_text,
+                "icon": event.get(CONF_ICON, DEFAULT_ICON),
+                "is_default_bg": False,
+                "z_index": 2,
+                "is_dynamic_color": self._is_dynamic_value(state),
+            }
+            groups[condition_key].append(block)
 
     # NEW METHOD: Create default layer
     def _create_default_layer(self):
@@ -1100,12 +1083,8 @@ class ScheduleSensorData:
                     "raw_state_template": self._serialize_template(
                         self.config.get(CONF_DEFAULT_STATE)
                     ),
-                    "unit": "",
                     "raw_conditions": [],
                     "condition_text": "default",
-                    "tooltip": "Default state",
-                    "description": "",
-                    "icon": self.default_icon,
                     "is_default_bg": True,
                     "z_index": 1,
                     "is_dynamic_color": self._is_dynamic_value(self.default_state),
@@ -1117,7 +1096,7 @@ class ScheduleSensorData:
     # NEW METHOD: Extract weekdays from conditions
     def _get_weekdays_from_condition(self, conditions):
         """Extract weekdays from time conditions."""
-        all_days = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+        all_days = WEEKDAYS
         if not conditions:
             return all_days
 
@@ -1139,116 +1118,320 @@ class ScheduleSensorData:
     # NEW METHOD: Serialize conditions
     def _serialize_conditions(self, conditions):
         """Serialize conditions to create a unique group key."""
+        if not conditions:
+            return "default"
+
         clean_conditions = []
         for cond in conditions:
-            if cond.get("condition") == "time" and "month" in cond:
-                clean_conditions.append(cond)
-            elif cond.get("condition") != "time":
-                clean_conditions.append(cond)
+            # Create a serializable copy of the condition
+            if isinstance(cond, dict):
+                serializable_cond = self._serialize_dict(cond)
 
-        return (
-            yaml.dump(clean_conditions, default_flow_style=False, sort_keys=True)
-            if clean_conditions
-            else "default"
-        )
+                # Filter time conditions with months
+                if (
+                    serializable_cond.get("condition") == "time"
+                    and "month" in serializable_cond
+                ):
+                    clean_conditions.append(serializable_cond)
+                # elif (
+                #     serializable_cond.get("condition") == "time"
+                #     and "weekday" in serializable_cond
+                # ):
+                #     clean_conditions.append(serializable_cond)
+                elif serializable_cond.get("condition") != "time":
+                    clean_conditions.append(serializable_cond)
+                else:
+                    # _LOGGER.debug(f"{self.name}: can't serialize condition: {cond}")
+                    pass
+            else:
+                serialized, value = self._serialize_item(cond)
+                if serialized:
+                    clean_conditions.append(value)
 
-    # NEW METHOD: Format conditions as readable text with nested support
+        if not clean_conditions:
+            return "default"
+
+        try:
+            # Use yaml.safe_dump to avoid Python objects
+            return yaml.safe_dump(
+                clean_conditions, default_flow_style=False, sort_keys=True
+            )
+        except Exception:
+            _LOGGER.error(
+                f"{self.name}: error serializing condition: {clean_conditions}"
+            )
+            return "unknown"
+
     def _format_conditions(self, conditions):
-        """Format conditions into readable text with support for nested AND/OR/NOT."""
+        """Format conditions into readable text with support for nested AND/OR/NOT.
+        Multiple conditions in a list are treated as implicit AND operations."""
         if not conditions:
             return ""
 
-        def format_single_condition(cond):
-            """Format a single condition."""
-            if not isinstance(cond, dict):
-                return ""
-
-            cond_type = cond.get("condition")
-
-            if cond_type == "state":
-                entity_id = cond.get("entity_id", "")
-                if isinstance(entity_id, list):
-                    entity_id = entity_id[0] if entity_id else ""
-                state_value = cond.get("state", "")
-                return f"{entity_id} == {state_value}"
-
-            elif cond_type == "numeric_state":
-                entity_id = cond.get("entity_id", "")
-                conds = []
-                if "above" in cond:
-                    conds.append(f"> {cond['above']}")
-                if "below" in cond:
-                    conds.append(f"< {cond['below']}")
-                return f"{entity_id} {' AND '.join(conds)}"
-
-            elif cond_type == "time":
-                time_parts = []
-                if "weekday" in cond:
-                    weekdays = cond["weekday"]
-                    if isinstance(weekdays, list):
-                        abbrs = []
-                        for wd in weekdays:
-                            abbrs.append(wd.capitalize()[:3])
-                        time_parts.append(f"Days: {', '.join(abbrs)}")
-                    else:
-                        time_parts.append(f"Days: {weekdays.capitalize()[:3]}")
-                if "month" in cond:
-                    months = cond["month"]
-                    if isinstance(months, list):
-                        time_parts.append(f"Month: {', '.join(map(str, months))}")
-                    else:
-                        time_parts.append(f"Month: {months}")
-
-                # IMPORTANT: Return joined parts, not with AND between them
-                # Because weekday and month in the same time condition are separate constraints
-                return " ".join(time_parts) if time_parts else ""
-
-            elif cond_type == "and":
-                sub_conds = cond.get("conditions", [])
-                if not sub_conds:
-                    return ""
-                formatted = [format_single_condition(c) for c in sub_conds]
-                formatted = [f for f in formatted if f]
-                if len(formatted) == 1:
-                    return formatted[0]
-                return f"({' AND '.join(formatted)})"
-
-            elif cond_type == "or":
-                sub_conds = cond.get("conditions", [])
-                if not sub_conds:
-                    return ""
-                formatted = [format_single_condition(c) for c in sub_conds]
-                formatted = [f for f in formatted if f]
-                if len(formatted) == 1:
-                    return formatted[0]
-                return f"({' OR '.join(formatted)})"
-
-            elif cond_type == "not":
-                sub_cond = cond.get("condition", None)
-                if sub_cond:
-                    formatted = format_single_condition(sub_cond)
-                    return f"NOT {formatted}" if formatted else ""
-                sub_conds = cond.get("conditions", [])
-                if sub_conds:
-                    formatted = format_single_condition(sub_conds[0])
-                    return f"NOT {formatted}" if formatted else ""
-                return ""
-
-            return ""
-
-        # Process all conditions
+        # Process all conditions - multiple conditions in a list are treated as implicit AND
         parts = []
         for cond in conditions:
-            formatted = format_single_condition(cond)
-            if formatted:
-                parts.append(formatted)
+            try:
+                formatted = self.format_single_condition(cond)
+                _LOGGER.debug(f"Formatted result: '{formatted}'")
+                if formatted:
+                    parts.append(formatted)
+            except Exception as e:
+                # Log the error for debugging but continue
+                _LOGGER.error(f"Error formatting condition {cond}: {e}")
+                continue
 
+        # Return formatted conditions
+        _LOGGER.debug(f"Final parts: {parts}")
         if len(parts) == 0:
             return ""
         elif len(parts) == 1:
             return parts[0]
         else:
+            # Multiple conditions at the top level are implicitly ANDed together
             return " AND ".join(parts)
+
+    def format_single_condition(self, cond):
+        """Format a single condition."""
+        if not isinstance(cond, dict):
+            return ""
+
+        # FIXME will not work with shorthand forms of AND/OR/NOT
+        # See https://www.home-assistant.io/docs/scripts/conditions/#logical-conditions
+        cond_type = cond.get("condition")
+
+        # conditions can be disabled by setting enabled: False
+        enabled = cond.get("enabled", True)
+        if isinstance(enabled, Template):
+            try:
+                enabled = enabled.async_render(limited=True)
+            except TemplateError:
+                _LOGGER.error(
+                    f"{self.name}: unable to evaluate template for 'enabled' in condition {cond} - assuming enabled"
+                )
+                enabled = True
+        if not enabled:
+            return ""
+
+        # DEBUG - log each condition being formatted
+        _LOGGER.debug(f"Formatting condition type: {cond_type}, full cond: {cond}")
+
+        if cond_type == "state":
+            entity_id = cond.get("entity_id", "")
+            # Handle case where entity_id is a list
+            if isinstance(entity_id, list):
+                if len(entity_id) == 1:
+                    entity_id = entity_id[0]
+                else:
+                    # Multiple entities: format as "[entity1, entity2, ...]"
+                    entity_id = f"[{', '.join(entity_id)}]"
+
+            state_value = cond.get("state", "")
+
+            return f"{entity_id} == {state_value}"
+
+        elif cond_type == "numeric_state":
+            entity_id = cond.get("entity_id", "")
+            # Handle case where entity_id is a list
+            if isinstance(entity_id, list):
+                if len(entity_id) == 1:
+                    entity_id = entity_id[0]
+                else:
+                    entity_id = f"[{', '.join(entity_id)}]"
+
+            conds = []
+            if "above" in cond:
+                conds.append(f"> {cond['above']}")
+            if "below" in cond:
+                conds.append(f"< {cond['below']}")
+            return f"{entity_id} {' AND '.join(conds)}"
+
+        elif cond_type == "time":
+            time_parts = []
+            if "weekday" in cond:
+                weekdays = cond["weekday"]
+                if isinstance(weekdays, list):
+                    abbrs = [wd.capitalize()[:3] for wd in weekdays]
+                    time_parts.append(f"Days: {', '.join(abbrs)}")
+                else:
+                    time_parts.append(f"Days: {weekdays.capitalize()[:3]}")
+            if "month" in cond:
+                months = cond["month"]
+                if isinstance(months, list):
+                    time_parts.append(f"Month: {', '.join(map(str, months))}")
+                else:
+                    time_parts.append(f"Month: {months}")
+
+            return " ".join(time_parts) if time_parts else ""
+
+        elif cond_type == "template":
+            # For templates, extract meaningful information
+            value_template = cond.get("value_template", "")
+            if isinstance(value_template, Template):
+                template_str = self._serialize_template(value_template)
+            elif isinstance(value_template, str):
+                template_str = value_template
+            else:
+                return "Custom condition"
+
+            # Clean up the template string
+            template_str = template_str.strip()
+            # Remove extra whitespace and newlines
+            template_str = " ".join(template_str.split())
+
+            # Try to extract entities mentioned in the template
+            entities = []
+
+            # Find all states('entity_id') or state_attr('entity_id', 'attr')
+            entity_matches = re.findall(r"states?\(['\"]([^'\"]+)['\"]\)", template_str)
+            entities.extend(entity_matches)
+
+            # Find entity references like sensor.xxx
+            entity_refs = re.findall(
+                r"\b(sensor\.\w+|binary_sensor\.\w+|input_\w+\.\w+|switch\.\w+|light\.\w+)",
+                template_str,
+            )
+            entities.extend(entity_refs)
+
+            # Remove duplicates while preserving order
+            seen = set()
+            unique_entities = []
+            for e in entities:
+                if e not in seen:
+                    seen.add(e)
+                    unique_entities.append(e)
+
+            # Determine the type of comparison
+            comparison = ""
+            if ">" in template_str:
+                comparison = ">"
+            elif "<" in template_str:
+                comparison = "<"
+            elif "==" in template_str:
+                comparison = "=="
+            elif "!=" in template_str:
+                comparison = "!="
+            elif " in " in template_str:
+                comparison = "in"
+
+            # Build a readable summary
+            if unique_entities:
+                if len(unique_entities) == 1:
+                    entity_name = unique_entities[0].replace("_", " ").title()
+                    if comparison:
+                        return f"{entity_name} {comparison} condition"
+                    else:
+                        return f"{entity_name} condition"
+                else:
+                    # Multiple entities
+                    entity_names = [
+                        e.split(".")[-1].replace("_", " ").title()
+                        for e in unique_entities[:2]
+                    ]
+                    if len(unique_entities) > 2:
+                        return f"Condition on {', '.join(entity_names)}... ({len(unique_entities)} entities)"
+                    else:
+                        return f"Condition on {' & '.join(entity_names)}"
+
+            if "sun_next_rising" in template_str:
+                if "today_at" in template_str:
+                    time_match = re.search(
+                        r"today_at\(['\"](\d+:\d+)['\"]\)", template_str
+                    )
+                    if time_match:
+                        if ">" in template_str:
+                            return f"Sunrise after {time_match.group(1)}"
+                        elif "<" in template_str:
+                            return f"Sunrise before {time_match.group(1)}"
+                return "Sunrise condition"
+
+            if "sun_next_setting" in template_str:
+                if "today_at" in template_str:
+                    time_match = re.search(
+                        r"today_at\(['\"](\d+:\d+)['\"]\)", template_str
+                    )
+                    if time_match:
+                        if ">" in template_str:
+                            return f"Sunset after {time_match.group(1)}"
+                        elif "<" in template_str:
+                            return f"Sunset before {time_match.group(1)}"
+                return "Sunset condition"
+
+            # Fallback: show abbreviated template
+            if len(template_str) > 50:
+                return f"Custom: {template_str[:47]}..."
+            return f"Custom: {template_str}"
+
+        elif cond_type == "and":
+            sub_conds = cond.get("conditions", [])
+            if not sub_conds:
+                return ""
+            formatted = [self.format_single_condition(c) for c in sub_conds]
+            formatted = [f for f in formatted if f]
+            if len(formatted) == 0:
+                return ""
+            elif len(formatted) == 1:
+                return formatted[0]
+            else:
+                return f"({' AND '.join(formatted)})"
+
+        elif cond_type == "or":
+            sub_conds = cond.get("conditions", [])
+            if not sub_conds:
+                return ""
+            formatted = [self.format_single_condition(c) for c in sub_conds]
+            formatted = [f for f in formatted if f]
+            if len(formatted) == 0:
+                return ""
+            elif len(formatted) == 1:
+                return formatted[0]
+            else:
+                return f"({' OR '.join(formatted)})"
+
+        elif cond_type == "not":
+            # Handle both single condition and list of conditions
+            # Note: the dict always has 'condition': 'not', but we need to check for sub-conditions
+
+            # Check if there's a list of conditions
+            sub_conds = cond.get("conditions", None)
+            _LOGGER.debug(
+                f"NOT condition - has 'conditions' list: {sub_conds is not None}"
+            )
+
+            if sub_conds is not None:
+                # Multiple conditions in a list
+                _LOGGER.debug(f"NOT condition - sub_conds: {sub_conds}")
+                formatted = [self.format_single_condition(c) for c in sub_conds]
+                _LOGGER.debug(
+                    f"NOT condition - formatted list before filter: {formatted}"
+                )
+                formatted = [f for f in formatted if f]
+                _LOGGER.debug(
+                    f"NOT condition - formatted list after filter: {formatted}"
+                )
+
+                if len(formatted) == 0:
+                    return ""
+                elif len(formatted) == 1:
+                    result = f"NOT ({formatted[0]})"
+                    _LOGGER.debug(f"NOT condition - final result: '{result}'")
+                    return result
+                else:
+                    # Multiple conditions in NOT - treat as implicit AND
+                    result = f"NOT ({' AND '.join(formatted)})"
+                    _LOGGER.debug(
+                        f"NOT condition - final result (multiple): '{result}'"
+                    )
+                    return result
+
+            # If no 'conditions' list, might be an error or old format
+            _LOGGER.warning(f"NOT condition without 'conditions' list: {cond}")
+            return ""
+
+        else:
+            _LOGGER.warning(f"{self.name}: unhandled condition type: {cond_type}")
+
+        return ""
 
     # NEW METHOD: Detect dynamic values
     def _is_dynamic_value(self, value):
