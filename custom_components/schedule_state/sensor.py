@@ -933,7 +933,9 @@ class ScheduleSensorData:
         months = event.get("months", None) or event.get("month", None)
         if months is not None:
             month_condition = {"condition": "time", "month": months}
-            conditions.append(month_condition)
+            # Only add if not already present
+            if month_condition not in conditions:
+                conditions.append(month_condition)
 
         # Filter by weekday
         weekdays = self._get_weekdays_from_condition(conditions)
