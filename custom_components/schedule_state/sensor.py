@@ -1130,9 +1130,8 @@ class ScheduleSensorData:
                 serializable_cond = self._serialize_dict(cond)
 
                 # Filter time conditions with months
-                if (
-                    serializable_cond.get("condition") == "time"
-                    and ("month" in serializable_cond or "weekday" in serializable_cond)
+                if serializable_cond.get("condition") == "time" and (
+                    "month" in serializable_cond or "weekday" in serializable_cond
                 ):
                     clean_conditions.append(serializable_cond)
                 # elif (
