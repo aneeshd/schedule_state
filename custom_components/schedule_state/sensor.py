@@ -933,7 +933,9 @@ class ScheduleSensorData:
         months = event.get("months", None) or event.get("month", None)
         if months is not None:
             month_condition = {"condition": "time", "month": months}
-            conditions.append(month_condition)
+            # Only add if not already present
+            if month_condition not in conditions:
+                conditions.append(month_condition)
 
         # Filter by weekday
         weekdays = self._get_weekdays_from_condition(conditions)
@@ -1128,9 +1130,8 @@ class ScheduleSensorData:
                 serializable_cond = self._serialize_dict(cond)
 
                 # Filter time conditions with months
-                if (
-                    serializable_cond.get("condition") == "time"
-                    and "month" in serializable_cond
+                if serializable_cond.get("condition") == "time" and (
+                    "month" in serializable_cond or "weekday" in serializable_cond
                 ):
                     clean_conditions.append(serializable_cond)
                 # elif (
