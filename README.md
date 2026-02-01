@@ -10,7 +10,7 @@ Instead, it separates the concepts of *when* you want something done,
 and *what* to do when that state arrives. Use `schedule_state` to handle the *when*,
 and standard Home Assistant tools to handle the *what*.
 
-`schedule_state` allows you to create sensors that provide arbitrary string values,
+`schedule_state` allows you to create sensors that provide arbitrary values,
 based on the time of day and other criteria. Home Assistant can then use the state of these
 sensors to trigger other automations.
 
@@ -188,8 +188,6 @@ This indicates that the condition definition may need to be examined.
 State values, start, and end times can be specified using [templates](https://www.home-assistant.io/docs/configuration/templating/).
 Simply use a template for any `state`, `default_state`, `start`, or `end` definition.
 
-In previous versions, it was necessary to use the attributes `start_template`/`end_template` instead of `start`/`end`.
-
 The template value must evaluate to one of these data types:
 
 | Format    | Comments                     |
@@ -211,7 +209,7 @@ the [sun integration](https://www.home-assistant.io/integrations/sun/).
         state: day
 ```
 
-Template values are refreshed at every `refresh` interval, or whenever the state of any entities referenced in the template change.
+Template values are refreshed at every `refresh` interval, or immediately whenever the state of any entities referenced in the template change.
 
 Sometimes, errors can occur when evaluating valid templates. This is because Home Assistant may not yet have loaded the entities on
 which the template depends. `schedule_state`
@@ -315,7 +313,7 @@ This example uses a [Mushroom card with a template chip](https://github.com/piit
 You should also check out [schedule-state-card](https://github.com/Pulpyyyy/schedule-state-card), which provides a nice
 GUI for the sensors defined with `schedule_state`.
 
-## Services
+## Actions (Services)
 
 ### `recalculate`
 
