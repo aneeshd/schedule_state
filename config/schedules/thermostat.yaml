@@ -1,72 +1,110 @@
+---
+input_boolean:
+  guest_mode:
+    initial: 'off'
+  vacation_mode:
+    initial: 'off'
+  early_start:
+    initial: 'off'
+
+input_datetime:
+  early_start_time:
+    has_date: false
+    has_time: true
+
+sensor:
   - platform: schedule_state
     name: Thermostat State
     default_state: normal
-    refresh: "24:00:00"
     icon: mdi:thermometer
     events:
-      - end: "5:30"
+      - start: "0:00"
+        end: "7:00"
         state: sleep
         icon: mdi:sleep
-      - start: "5:30"
-        end: "6:30"
+
+      - start: "6:30"
+        end: "7:00"
         state: toasty
         icon: mdi:thermometer-plus
-      - start: "6:30"
-        end: "15:30"
+
+      - start: "7:00"
         state: normal
-      - start: "15:30"
-        end: "17:30"
+
+      - start: "16:00"
+        end: "18:00"
         state: energy-saving
         icon: mdi:thermometer-minus
-      - start: "17:30"
+        condition:
+          condition: state
+          entity_id: input_boolean.guest_mode
+          state: "off"
+
+      - start: "18:00"
         end: "20:00"
         state: toasty
+
       - start: "20:00"
         end: "22:30"
         state: normal
+
       - start: "22:30"
         state: sleep
 
-      # Tuesday morning
-      - start: "4:45"
-        end: "6:30"
+      # Early start - now controlled by "early_start" toggle
+      - start: "{{ states('input_datetime.early_start_time') }}"
+        end: "7:30"
         state: toasty
         condition:
-          condition: time
-          weekday:
-            - tue
+          condition: state
+          entity_id: input_boolean.early_start
+          state: "on"
 
-      # Wednesday morning
-      - start: "5:15"
-        end: "6:30"
-        state: toasty
-        condition:
-          condition: time
-          weekday:
-            - wed
-
-      # Friday afternoon
-      - start: "15:30"
-        end: "17:30"
+      # Monday/Friday afternoon - undo energy-saving
+      - start: "16:00"
+        end: "18:00"
         state: normal
         condition:
           condition: time
           weekday:
+            - mon
             - fri
 
       # weekends
       - start: "0:00"
-        end: "8:00"
+        end: "8:30"
         state: sleep
         condition: &weekend
           condition: time
           weekday:
             - sat
             - sun
-      - start: "8:00"
-        end: "10:00"
-        state: toasty
-        condition: *weekend
-      - start: "10:00"
+
+      - start: "8:30"
         state: normal
         condition: *weekend
+
+      - state: normal
+        start: "20:00"
+        end: "23:00"
+        condition: &guest_mode
+          condition: state
+          entity_id: input_boolean.guest_mode
+          state: "on"
+
+      - start: "5:00"
+        end: "10:00"
+        state: normal
+        condition: *guest_mode
+
+      - start: "5:30"
+        end: "6:00"
+        state: toasty
+        condition: *guest_mode
+
+      # vacation mode
+      - state: vacation
+        condition:
+          condition: state
+          entity_id: input_boolean.vacation_mode
+          state: "on"

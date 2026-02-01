@@ -46,9 +46,42 @@ TIME_FUNCTION_PATH = "homeassistant.util.dt.now"
 # dt.set_default_time_zone(test_tz)
 
 
-async def setup_test_entities(hass: HomeAssistant, config_dict: dict[str, Any]) -> None:
-    """Set up a test schedule_state sensor entity."""
-    # _LOGGER.debug(f"config: {config_dict}")
+async def load_config(hass: HomeAssistant, filename: str, now=None):
+    with open(filename) as f:
+        config = yaml.safe_load(f)
+
+    now = now or make_testtime(4, 0)
+    with patch(TIME_FUNCTION_PATH, return_value=now):
+        for component in (
+            "input_number",
+            "input_boolean",
+            "input_datetime",
+            "binary_sensor",
+            "sensor",
+        ):
+            if component not in config:
+                continue
+
+            ret = await setup.async_setup_component(
+                hass,
+                component,
+                {component: config[component]},
+            )
+            await hass.async_block_till_done()
+            assert ret, f"Setup failed ({component})"
+
+            if component == "sensor":
+                config_list = config[component]
+                num = len(config_list)
+
+                # do some sanity checks on any schedule_state sensors
+                sensors = [e for e in hass.data["sensor"].entities]
+                for config, sensor in zip(config_list, sensors[-num:]):
+                    check_schedule_state_sanity(config, sensor)
+
+
+async def setup_test_sensor(hass: HomeAssistant, config_dict: dict[str, Any]) -> None:
+    """Set up a test sensor (it does not have to be a schedule_state)."""
     ret = await setup.async_setup_component(
         hass,
         SENSOR,
@@ -61,25 +94,49 @@ async def setup_test_entities(hass: HomeAssistant, config_dict: dict[str, Any]) 
     await hass.async_block_till_done()
     assert ret, "Setup failed"
 
-    if config_dict.get("platform") == "schedule_state":
-        # do some basic checks on "extended attributes" used for schedule-state-card
-        sensor = [e for e in hass.data["sensor"].entities][-1]
+    # do some sanity checks in case it was a schedule_state sensor
+    sensor = [e for e in hass.data["sensor"].entities][-1]
+    check_schedule_state_sanity(config_dict, sensor)
 
-        # check that all events were serialized (does not check correctness)
-        assert len(config_dict.get("events", [])) == len(sensor._attributes["events"])
 
-        layers = sensor._attributes["layers"]
+async def setup_test_multiple_sensors(
+    hass: HomeAssistant, config_list: list[dict[str, Any]]
+) -> None:
+    """Set up multiple test sensors."""
+    num = len(config_list)
+    ret = await setup.async_setup_component(
+        hass,
+        SENSOR,
+        {SENSOR: config_list},
+    )
+    await hass.async_block_till_done()
+    assert ret, "Setup failed"
 
-        # check that there is a layer for each day
-        for day in WEEKDAYS:
-            assert day in layers
-            layer = layers[day]
-            # check that the last layer is the default layer
-            assert layer[-1]["is_default_layer"] is True
+    # do some sanity checks on any schedule_state sensors
+    sensors = [e for e in hass.data["sensor"].entities]
+    for config, sensor in zip(config_list, sensors[-num:]):
+        check_schedule_state_sanity(config, sensor)
+
+
+def check_schedule_state_sanity(config, sensor):
+    if config.get("platform") != "schedule_state":
+        return
+
+    # check that all events were serialized (does not check correctness)
+    assert len(config.get("events", [])) == len(sensor._attributes["events"])
+
+    layers = sensor._attributes["layers"]
+
+    # check that there is a layer for each day
+    for day in WEEKDAYS:
+        assert day in layers
+        layer = layers[day]
+        # check that the last layer is the default layer
+        assert layer[-1]["is_default_layer"] is True
 
 
 async def test_blank_setup(hass: HomeAssistant) -> None:
-    await setup_test_entities(hass, {"platform": DOMAIN})
+    await setup_test_sensor(hass, {"platform": DOMAIN})
 
 
 def basic_test(
@@ -98,7 +155,7 @@ def basic_test(
 
         now = make_testtime(4, 0)
         with patch(TIME_FUNCTION_PATH, return_value=now) as p:
-            await setup_test_entities(
+            await setup_test_sensor(
                 hass,
                 config[0],
             )
@@ -263,7 +320,7 @@ async def _test_wrapping_not_allowed(hass: HomeAssistant, config, name: str):
     now = make_testtime(4, 0)
 
     with patch(TIME_FUNCTION_PATH, return_value=now) as p:
-        await setup_test_entities(
+        await setup_test_sensor(
             hass,
             config[0],
         )
@@ -327,7 +384,7 @@ async def _test_wrapping_allowed(hass: HomeAssistant, config):
     now = make_testtime(4, 0)
 
     with patch(TIME_FUNCTION_PATH, return_value=now) as p:
-        await setup_test_entities(
+        await setup_test_sensor(
             hass,
             config[0],
         )
@@ -369,7 +426,7 @@ async def test_overrides(hass: HomeAssistant) -> None:
     config[0][CONF_NAME] = sensor_name
 
     with patch(TIME_FUNCTION_PATH, return_value=now) as p:
-        await setup_test_entities(
+        await setup_test_sensor(
             hass,
             config[0],
         )
@@ -507,7 +564,7 @@ async def test_overrides_with_id(hass: HomeAssistant) -> None:
         config = yaml.safe_load(f)
 
     with patch(TIME_FUNCTION_PATH, return_value=now) as p:
-        await setup_test_entities(
+        await setup_test_sensor(
             hass,
             config[0],
         )
@@ -606,7 +663,7 @@ async def test_schedule_modified_by_template(hass: HomeAssistant, configfile: st
 
     now = make_testtime(4, 0)
     with patch(TIME_FUNCTION_PATH, return_value=now) as p:
-        await setup_test_entities(
+        await setup_test_sensor(
             hass,
             config[0],
         )
@@ -702,7 +759,7 @@ async def test_schedule_modified_by_template_with_error(
 
     now = make_testtime(4, 0)
     with patch(TIME_FUNCTION_PATH, return_value=now) as p:
-        await setup_test_entities(
+        await setup_test_sensor(
             hass,
             config[0],
         )
@@ -776,7 +833,7 @@ async def test_schedule_using_condition(
     # no workday sensor, not a holiday, early morning
     now = make_testtime(4, 0)
     with patch(TIME_FUNCTION_PATH, return_value=now) as p:
-        await setup_test_entities(
+        await setup_test_sensor(
             hass,
             config[0],
         )
@@ -859,7 +916,7 @@ async def test_extra_attributes(hass: HomeAssistant):
 
     now = make_testtime(4, 0)
     with patch(TIME_FUNCTION_PATH, return_value=now) as p:
-        await setup_test_entities(
+        await setup_test_sensor(
             hass,
             config[0],
         )
@@ -1010,7 +1067,7 @@ async def test_issue92(hass: HomeAssistant, freezer: FrozenDateTimeFactory):
     now = make_testtime(4, 0)
     freezer.move_to(now)
     with patch(TIME_FUNCTION_PATH, return_value=now) as p:
-        await setup_test_entities(
+        await setup_test_sensor(
             hass,
             config["sensor"][0],
         )

@@ -46,7 +46,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.reload import async_setup_reload_service
 from homeassistant.helpers.restore_state import ExtraStoredData, RestoreEntity
-from homeassistant.helpers.template import Template
+from homeassistant.helpers.template import Template, is_template_string
 from homeassistant.helpers.trace import trace_path
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from homeassistant.util import dt
@@ -79,6 +79,8 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 _CONDITION_SCHEMA = vol.All(cv.ensure_list, [cv.CONDITION_SCHEMA])
+
+FORCE_NEW_LAYER = (0, "~~~force-new-layer~~~")
 
 
 # FIXME not sure how to accept templates for icons
@@ -894,8 +896,11 @@ class ScheduleSensorData:
         """Build event layers for a given day, grouped by identical conditions."""
         groups = OrderedDict()
 
+        prev_layer = FORCE_NEW_LAYER
         for event_idx, event in enumerate(self.events + self.overrides):
-            await self._build_layers_for_event(groups, event_idx, event, day)
+            prev_layer = await self._build_layers_for_event(
+                groups, event_idx, event, day, prev_layer
+            )
 
         # Convert groups to layers
         layers = []
@@ -915,16 +920,24 @@ class ScheduleSensorData:
 
         return layers
 
-    async def _build_layers_for_event(self, groups, event_idx, event, day):
+    async def _build_layers_for_event(self, groups, event_idx, event, day, prev_layer):
         try:
-            await self._build_layers_for_event_unsafe(groups, event_idx, event, day)
+            return await self._build_layers_for_event_unsafe(
+                groups, event_idx, event, day, prev_layer
+            )
 
-        except Exception:
+        except Exception as e:
             # Skip events that cannot be processed
-            _LOGGER.error(f"{self.name}: could not process event {event}")
-            return
+            _LOGGER.error(f"{self.name}: could not process event {event} - {e}")
+            import traceback
 
-    async def _build_layers_for_event_unsafe(self, groups, event_idx, event, day):
+            error_msg = traceback.format_exc()
+            _LOGGER.error(error_msg)
+            return FORCE_NEW_LAYER
+
+    async def _build_layers_for_event_unsafe(
+        self, groups, event_idx, event, day, prev_layer
+    ):
         conditions = event.get(CONF_CONDITION, []) or []
         if not isinstance(conditions, list):
             conditions = [conditions] if conditions else []
@@ -940,7 +953,7 @@ class ScheduleSensorData:
         # Filter by weekday
         weekdays = self._get_weekdays_from_condition(conditions)
         if day not in weekdays:
-            return
+            return FORCE_NEW_LAYER
 
         # It would be nice to refactor with process_events() - lots of duplication
         # Evaluate state
@@ -948,18 +961,18 @@ class ScheduleSensorData:
             event, CONF_STATE, default=self.default_state
         )
         if not state_eval.success:
-            return
+            return FORCE_NEW_LAYER
 
         state = state_eval.result
 
         # Get start/end times - EVALUATE TEMPLATES
         start = await self.get_start(event)
         if start is None:
-            return
+            return FORCE_NEW_LAYER
 
         end = await self.get_end(event)
         if end is None:
-            return
+            return FORCE_NEW_LAYER
 
         # Apply offsets - EVALUATE TEMPLATES FOR OFFSETS
         start_offset = 0
@@ -987,7 +1000,11 @@ class ScheduleSensorData:
         wraps = start > end
 
         # Create condition key for grouping ("default" if no conditions, or "unknown" if an error occurs)
-        condition_key = self._serialize_conditions(conditions)
+        new_layer = self._serialize_conditions(conditions)
+        if new_layer == prev_layer[1]:
+            condition_key = prev_layer[0]
+        else:
+            condition_key = str(event_idx)
         if condition_key not in groups:
             groups[condition_key] = []
 
@@ -1066,6 +1083,8 @@ class ScheduleSensorData:
                 "is_dynamic_color": self._is_dynamic_value(state),
             }
             groups[condition_key].append(block)
+
+        return (condition_key, new_layer)
 
     # NEW METHOD: Create default layer
     def _create_default_layer(self):
@@ -1173,7 +1192,7 @@ class ScheduleSensorData:
         parts = []
         for cond in conditions:
             try:
-                formatted = self.format_single_condition(cond)
+                formatted = self._format_single_condition(cond)
                 _LOGGER.debug(f"Formatted result: '{formatted}'")
                 if formatted:
                     parts.append(formatted)
@@ -1192,7 +1211,7 @@ class ScheduleSensorData:
             # Multiple conditions at the top level are implicitly ANDed together
             return " AND ".join(parts)
 
-    def format_single_condition(self, cond):
+    def _format_single_condition(self, cond):
         """Format a single condition."""
         if not isinstance(cond, dict):
             return ""
@@ -1219,6 +1238,8 @@ class ScheduleSensorData:
 
         if cond_type == "state":
             entity_id = cond.get("entity_id", "")
+            any = ""
+
             # Handle case where entity_id is a list
             if isinstance(entity_id, list):
                 if len(entity_id) == 1:
@@ -1226,10 +1247,21 @@ class ScheduleSensorData:
                 else:
                     # Multiple entities: format as "[entity1, entity2, ...]"
                     entity_id = f"[{', '.join(entity_id)}]"
+                    if cond.get("match") == "any":
+                        any = "Any of "
+
+            _for = ""  # TODO
+
+            attr = ""
+            if (attribute := cond.get("attribute")) is not None:
+                attr = f" (attribute {attribute})"
 
             state_value = cond.get("state", "")
-
-            return f"{entity_id} == {state_value}"
+            op = "=="
+            if isinstance(state_value, list):
+                state_value = f"[{', '.join(state_value)}]"
+                op = "in"
+            return f"{any}{entity_id} {op} {state_value}{attr}{_for}"
 
         elif cond_type == "numeric_state":
             entity_id = cond.get("entity_id", "")
@@ -1240,12 +1272,16 @@ class ScheduleSensorData:
                 else:
                     entity_id = f"[{', '.join(entity_id)}]"
 
+            attr = ""
+            if (attribute := cond.get("attribute")) is not None:
+                attr = f" (attribute {attribute})"
+
             conds = []
             if "above" in cond:
                 conds.append(f"> {cond['above']}")
             if "below" in cond:
                 conds.append(f"< {cond['below']}")
-            return f"{entity_id} {' AND '.join(conds)}"
+            return f"{entity_id} {' AND '.join(conds)}{attr}"
 
         elif cond_type == "time":
             time_parts = []
@@ -1367,7 +1403,7 @@ class ScheduleSensorData:
             sub_conds = cond.get("conditions", [])
             if not sub_conds:
                 return ""
-            formatted = [self.format_single_condition(c) for c in sub_conds]
+            formatted = [self._format_single_condition(c) for c in sub_conds]
             formatted = [f for f in formatted if f]
             if len(formatted) == 0:
                 return ""
@@ -1380,7 +1416,7 @@ class ScheduleSensorData:
             sub_conds = cond.get("conditions", [])
             if not sub_conds:
                 return ""
-            formatted = [self.format_single_condition(c) for c in sub_conds]
+            formatted = [self._format_single_condition(c) for c in sub_conds]
             formatted = [f for f in formatted if f]
             if len(formatted) == 0:
                 return ""
@@ -1402,7 +1438,7 @@ class ScheduleSensorData:
             if sub_conds is not None:
                 # Multiple conditions in a list
                 _LOGGER.debug(f"NOT condition - sub_conds: {sub_conds}")
-                formatted = [self.format_single_condition(c) for c in sub_conds]
+                formatted = [self._format_single_condition(c) for c in sub_conds]
                 _LOGGER.debug(
                     f"NOT condition - formatted list before filter: {formatted}"
                 )
@@ -1444,8 +1480,7 @@ class ScheduleSensorData:
         return (
             "states(" in value_str
             or "state_attr(" in value_str
-            or "{{" in value_str
-            or "{%" in value_str
+            or is_template_string(value_str)
         )
 
     def _get_intervals(self, start, end, allow_wrap):
